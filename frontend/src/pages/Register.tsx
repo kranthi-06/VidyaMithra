@@ -5,15 +5,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Lock, Eye, EyeOff, Rocket, ArrowLeft } from 'lucide-react';
+import {
+    User,
+    Mail,
+    Lock,
+    Eye,
+    EyeOff,
+    CheckCircle2,
+    ShieldCheck,
+    GraduationCap,
+    ArrowRight,
+    Sparkles
+} from 'lucide-react';
 
 export default function Register() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [username, setUsername] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [username, setUsername] = useState(''); // Kept for backend compatibility if needed
+
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -30,31 +42,55 @@ export default function Register() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
+
         if (password !== confirmPassword) {
+            setError('Passwords do not match');
             showToast('Passwords do not match', 'error');
             return;
         }
+
         setIsLoading(true);
-        setError('');
         try {
+            // Construct full name
+            const fullName = `${firstName} ${lastName}`.trim();
+
+            // If username is optional in UI but required by backend, generator or use email prefix
+            const finalUsername = username || email.split('@')[0];
+
             await register({
                 email,
                 password,
-                full_name: `${firstName} ${lastName}`
+                full_name: fullName,
+                username: finalUsername
             });
-            showToast('Identity created! Logging you in...', 'success');
+            showToast('Account created successfully! Redirecting...', 'success');
             setTimeout(() => navigate('/dashboard'), 1500);
         } catch (err: any) {
-            setError(err.response?.data?.detail || 'Registration failed. Try again.');
-            showToast('Onboarding failed.', 'error');
+            console.error('Registration Error:', err);
+            let errorMsg = 'Registration failed. Please try again.';
+
+            if (err.response?.data?.detail) {
+                const detail = err.response.data.detail;
+                if (typeof detail === 'string') {
+                    errorMsg = detail;
+                } else if (Array.isArray(detail)) {
+                    // Start of validation error handling
+                    errorMsg = detail.map((e: any) => e.msg).join(', ');
+                } else if (typeof detail === 'object') {
+                    errorMsg = JSON.stringify(detail);
+                }
+            }
+
+            setError(errorMsg);
+            showToast(errorMsg, 'error');
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[#5c52d2] font-sans selection:bg-purple-200">
-
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 font-sans">
 
             {/* Toast Notification */}
             <AnimatePresence>
@@ -63,10 +99,12 @@ export default function Register() {
                         initial={{ y: -50, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: -50, opacity: 0 }}
-                        className={`fixed top-8 px-6 py-3 rounded-2xl shadow-2xl text-white z-[100] font-bold ${toast.type === 'success' ? 'bg-green-500' :
-                            toast.type === 'error' ? 'bg-red-500' : 'bg-[#4e43ba]'
+                        className={`fixed top-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl text-white z-[100] font-medium flex items-center gap-2 ${toast.type === 'success' ? 'bg-emerald-500' :
+                            toast.type === 'error' ? 'bg-rose-500' : 'bg-indigo-500'
                             }`}
                     >
+                        {toast.type === 'success' && <CheckCircle2 size={18} />}
+                        {toast.type === 'error' && <ShieldCheck size={18} />}
                         {toast.message}
                     </motion.div>
                 )}
@@ -75,169 +113,198 @@ export default function Register() {
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5 }}
-                className="w-full max-w-[550px] bg-white rounded-[2.5rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] p-10 relative overflow-hidden my-8"
+                className="w-full max-w-6xl bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col md:flex-row min-h-[750px]"
             >
-                {/* Decorative purple bar at the bottom */}
-                <div className="absolute bottom-0 left-0 right-0 h-2 bg-[#5c52d2]"></div>
 
-                <div className="flex flex-col items-center text-center space-y-4 mb-8">
-                    <motion.div
-                        animate={{ y: [0, -10, 0] }}
-                        transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                        className="w-16 h-16 bg-[#2d2a4a] text-[#ffd700] rounded-2xl flex items-center justify-center rotate-12 shadow-lg mb-2"
-                    >
-                        <Rocket className="w-10 h-10 -rotate-12 fill-[#ffd700]" />
-                    </motion.div>
-
-                    <div className="space-y-1">
-                        <h1 className="text-4xl font-black text-[#2d2a4a] tracking-tight">Join VidyāMitra</h1>
-                        <p className="text-[10px] font-black text-[#7c83fd] tracking-[0.3em] uppercase">Start Your Career Journey</p>
+                {/* LEFT SIDE - BRANDING */}
+                <div className="md:w-5/12 lg:w-1/2 bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] p-12 text-white flex flex-col justify-between relative overflow-hidden order-last md:order-first">
+                    {/* Background decorations */}
+                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-10 pointer-events-none">
+                        <div className="absolute top-10 left-10 w-64 h-64 bg-white rounded-full mix-blend-overlay filter blur-3xl"></div>
+                        <div className="absolute bottom-10 right-10 w-96 h-96 bg-purple-900 rounded-full mix-blend-overlay filter blur-3xl"></div>
                     </div>
 
-                    <p className="text-[#64748b] font-medium leading-relaxed flex items-center gap-2">
-                        Create your account to unlock your potential 💡
-                    </p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="firstName" className="text-xs font-bold text-[#2d2a4a] ml-1">First Name</Label>
-                            <Input
-                                id="firstName"
-                                required
-                                value={firstName}
-                                onChange={(e) => setFirstName(e.target.value)}
-                                className="block w-full px-4 py-5 border-[#e2e8f0] border-2 rounded-xl focus:border-[#5c52d2] focus:ring-0 transition-all text-[#2d2a4a] font-semibold placeholder:text-[#94a3b8]"
-                                placeholder="John"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="lastName" className="text-xs font-bold text-[#2d2a4a] ml-1">Last Name</Label>
-                            <Input
-                                id="lastName"
-                                required
-                                value={lastName}
-                                onChange={(e) => setLastName(e.target.value)}
-                                className="block w-full px-4 py-5 border-[#e2e8f0] border-2 rounded-xl focus:border-[#5c52d2] focus:ring-0 transition-all text-[#2d2a4a] font-semibold placeholder:text-[#94a3b8]"
-                                placeholder="Doe"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label htmlFor="username" className="text-xs font-bold text-[#2d2a4a] ml-1">Username</Label>
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#94a3b8] group-focus-within:text-[#5c52d2] transition-colors">
-                                <User className="h-4 w-4" />
+                    <div className="relative z-10">
+                        <Link to="/" className="flex items-center gap-3 mb-2 w-fit hover:opacity-80 transition-opacity">
+                            <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center text-white">
+                                <GraduationCap size={24} />
                             </div>
-                            <Input
-                                type="text"
-                                id="username"
-                                required
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="block w-full pl-10 pr-4 py-5 border-[#e2e8f0] border-2 rounded-xl focus:border-[#5c52d2] focus:ring-0 transition-all text-[#2d2a4a] font-semibold placeholder:text-[#94a3b8]"
-                                placeholder="john_doe"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label htmlFor="email" className="text-xs font-bold text-[#2d2a4a] ml-1">Email</Label>
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#94a3b8] group-focus-within:text-[#5c52d2] transition-colors">
-                                <Mail className="h-4 w-4" />
-                            </div>
-                            <Input
-                                type="email"
-                                id="email"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="block w-full pl-10 pr-4 py-5 border-[#e2e8f0] border-2 rounded-xl focus:border-[#5c52d2] focus:ring-0 transition-all text-[#2d2a4a] font-semibold placeholder:text-[#94a3b8]"
-                                placeholder="john@example.com"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label htmlFor="password" title="Password" className="text-xs font-bold text-[#2d2a4a] ml-1">Password</Label>
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#94a3b8] group-focus-within:text-[#5c52d2] transition-colors">
-                                <Lock className="h-4 w-4" />
-                            </div>
-                            <Input
-                                type={showPassword ? "text" : "password"}
-                                id="password"
-                                required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="block w-full pl-10 pr-12 py-5 border-[#e2e8f0] border-2 rounded-xl focus:border-[#5c52d2] focus:ring-0 transition-all text-[#2d2a4a] font-semibold placeholder:text-[#94a3b8]"
-                                placeholder="At least 8 characters"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute inset-y-0 right-0 pr-4 flex items-center text-[#94a3b8] hover:text-[#5c52d2] transition-colors"
-                            >
-                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label htmlFor="confirmPassword" title="Confirm Password" className="text-xs font-bold text-[#2d2a4a] ml-1">Confirm Password</Label>
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#94a3b8] group-focus-within:text-[#5c52d2] transition-colors">
-                                <Lock className="h-4 w-4" />
-                            </div>
-                            <Input
-                                type={showConfirmPassword ? "text" : "password"}
-                                id="confirmPassword"
-                                required
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="block w-full pl-10 pr-12 py-5 border-[#e2e8f0] border-2 rounded-xl focus:border-[#5c52d2] focus:ring-0 transition-all text-[#2d2a4a] font-semibold placeholder:text-[#94a3b8]"
-                                placeholder="Confirm your password"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                className="absolute inset-y-0 right-0 pr-4 flex items-center text-[#94a3b8] hover:text-[#5c52d2] transition-colors"
-                            >
-                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
-                        </div>
-                    </div>
-
-                    <Button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:from-[#4f46e5] hover:to-[#7c3aed] text-white py-7 rounded-2xl font-black text-lg transition-all shadow-[0_10px_20px_-5px_rgba(99,102,241,0.4)] active:scale-[0.98]"
-                    >
-                        {isLoading ? "Creating Account..." : "🚀 Create Account"}
-                    </Button>
-                </form>
-
-                <div className="mt-6 text-center">
-                    <p className="text-sm font-bold text-[#64748b]">
-                        Already have an account?{' '}
-                        <Link to="/login" className="text-[#6366f1] hover:underline underline-offset-4">
-                            Sign in here
+                            <span className="text-2xl font-bold tracking-tight">VidyāMitra</span>
                         </Link>
-                    </p>
-                </div>
-            </motion.div>
+                    </div>
 
-            {/* Footnote */}
-            <div className="text-center pb-8 sticky bottom-0">
-                <Link to="/" className="inline-flex items-center gap-2 text-white/50 hover:text-white transition-all font-black uppercase text-xs tracking-[0.3em] group">
-                    <ArrowLeft className="w-5 h-5 group-hover:-translate-x-2 transition-transform" />
-                    Back to Home
-                </Link>
-            </div>
+                    <div className="relative z-10 space-y-8 my-10">
+                        <div>
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-md text-sm font-semibold mb-6 text-yellow-300">
+                                <Sparkles size={14} />
+                                <span>Join 15,000+ Professionals</span>
+                            </div>
+                            <h1 className="text-4xl lg:text-5xl font-bold leading-tight mb-4">
+                                Start Your Journey to Success Today 🚀
+                            </h1>
+                            <p className="text-indigo-100 text-lg leading-relaxed opacity-90">
+                                Create your account to unlock AI-powered career tools, personalized learning paths, and mock interviews.
+                            </p>
+                        </div>
+
+                        <div className="space-y-4">
+                            {[
+                                { title: "Smart Resume Builder", desc: "Create ATS-friendly resumes in minutes" },
+                                { title: "Career Roadmap", desc: "Step-by-step guide to your dream job" },
+                                { title: "Skill Analytics", desc: "Track your progress relative to industry standards" }
+                            ].map((item, idx) => (
+                                <div key={idx} className="flex items-start gap-4 p-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10">
+                                    <div className="mt-1 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                                        <CheckCircle2 className="w-4 h-4 text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-white text-base">{item.title}</h3>
+                                        <p className="text-indigo-100 text-sm">{item.desc}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                </div>
+
+                {/* RIGHT SIDE - FORM */}
+                <div className="md:w-7/12 lg:w-1/2 bg-white p-8 md:p-12 flex flex-col justify-center overflow-y-auto max-h-[90vh] md:max-h-auto">
+                    <div className="max-w-md mx-auto w-full space-y-6">
+
+                        <div className="text-center space-y-2">
+                            <h2 className="text-3xl font-bold text-slate-900">Create Account</h2>
+                            <p className="text-slate-500">Enter your details to get started</p>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="firstName" className="text-sm font-semibold text-slate-700">First Name</Label>
+                                    <Input
+                                        id="firstName"
+                                        required
+                                        value={firstName}
+                                        onChange={(e) => setFirstName(e.target.value)}
+                                        className="py-6 rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
+                                        placeholder="John"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="lastName" className="text-sm font-semibold text-slate-700">Last Name</Label>
+                                    <Input
+                                        id="lastName"
+                                        required
+                                        value={lastName}
+                                        onChange={(e) => setLastName(e.target.value)}
+                                        className="py-6 rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
+                                        placeholder="Doe"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="email" className="text-sm font-semibold text-slate-700">Email Address</Label>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                                    </div>
+                                    <Input
+                                        type="email"
+                                        id="email"
+                                        required
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="pl-11 py-6 rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
+                                        placeholder="you@example.com"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="password" title="Password" className="text-sm font-semibold text-slate-700">Password</Label>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                                    </div>
+                                    <Input
+                                        type={showPassword ? "text" : "password"}
+                                        id="password"
+                                        required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="pl-11 pr-11 py-6 rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
+                                        placeholder="Create a password"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-indigo-600 transition-colors"
+                                    >
+                                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="confirmPassword" title="Confirm Password" className="text-sm font-semibold text-slate-700">Confirm Password</Label>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                                    </div>
+                                    <Input
+                                        type={showConfirmPassword ? "text" : "password"}
+                                        id="confirmPassword"
+                                        required
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        className="pl-11 pr-11 py-6 rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
+                                        placeholder="Confirm your password"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-indigo-600 transition-colors"
+                                    >
+                                        {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {error && (
+                                <p className="text-sm text-red-500 font-medium bg-red-50 p-3 rounded-lg flex items-center gap-2">
+                                    <ShieldCheck size={16} /> {error}
+                                </p>
+                            )}
+
+                            <Button
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-6 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all mt-4 group"
+                            >
+                                {isLoading ? "Creating Account..." : (
+                                    <span className="flex items-center justify-center gap-2">
+                                        Create Account <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    </span>
+                                )}
+                            </Button>
+                        </form>
+
+                        <div className="text-center space-y-6">
+                            <p className="text-slate-600">
+                                Already have an account?{' '}
+                                <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-500">
+                                    Sign in instead
+                                </Link>
+                            </p>
+
+
+                        </div>
+
+                    </div>
+                </div>
+
+            </motion.div>
         </div>
     );
 }

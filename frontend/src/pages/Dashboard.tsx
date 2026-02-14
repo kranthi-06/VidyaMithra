@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { PremiumNavbar } from '../components/PremiumNavbar';
+import { PremiumBackground } from '../components/PremiumBackground';
 import {
     FileText,
     Target,
@@ -68,115 +69,139 @@ export default function Dashboard() {
     ];
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] font-sans pb-20">
-            <PremiumNavbar />
+        <div className="min-h-screen font-sans pb-20 relative overflow-hidden animated-gradient">
+            <PremiumBackground />
 
-            <main className="max-w-[1400px] mx-auto px-6 pt-10">
+            <div className="relative z-10">
+                <PremiumNavbar />
 
-                {/* Welcome Banner */}
-                <div className="bg-[#5c52d2] rounded-[2.5rem] p-10 md:p-14 mb-10 text-white relative overflow-hidden shadow-2xl">
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
-                        <div className="space-y-4">
-                            <h1 className="text-4xl md:text-5xl font-black tracking-tight">
-                                Welcome back, {user?.full_name?.split(' ')[0] || 'John'}! 👋
-                            </h1>
-                            <p className="text-white/80 text-lg font-medium">Ready to advance your career today?</p>
-                        </div>
+                <main className="max-w-[1400px] mx-auto px-6 pt-10">
 
-                        <div
-                            onClick={() => navigate('/profile')}
-                            className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 flex items-center gap-5 w-full md:w-auto min-w-[300px] cursor-pointer hover:bg-white/20 transition-all"
-                        >
-                            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
-                                <UserIcon className="w-8 h-8 text-white" />
+                    {/* Welcome Banner - Glassmorphism */}
+                    <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-[2.5rem] p-10 md:p-14 mb-10 text-white relative overflow-hidden shadow-2xl">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
+                            <div className="space-y-4">
+                                <h1 className="text-4xl md:text-5xl font-black tracking-tight drop-shadow-lg">
+                                    Welcome back, {user?.full_name?.split(' ')[0] || 'John'}! 👋
+                                </h1>
+                                <p className="text-white/90 text-lg font-medium drop-shadow-md">Ready to advance your career today?</p>
                             </div>
-                            <div>
-                                <h4 className="font-black text-xl leading-none mb-1">{user?.full_name || 'John Doe'}</h4>
-                                <p className="text-white/60 font-bold text-sm">{user?.email || 'john@gmail.com'}</p>
-                            </div>
+
+                            <motion.div
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => navigate('/profile')}
+                                className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 flex items-center gap-5 w-full md:w-auto min-w-[300px] cursor-pointer hover:bg-white/20 transition-all shadow-lg"
+                            >
+                                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center border border-white/10">
+                                    <UserIcon className="w-8 h-8 text-white" />
+                                </div>
+                                <div>
+                                    <h4 className="font-black text-xl leading-none mb-1">{user?.full_name || 'John Doe'}</h4>
+                                    <p className="text-white/70 font-bold text-sm">{user?.email || 'john@gmail.com'}</p>
+                                </div>
+                            </motion.div>
                         </div>
+                        {/* Decorative Background Elements */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/30 rounded-full -mr-32 -mt-32 blur-[80px]"></div>
+                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500/30 rounded-full -ml-24 -mb-24 blur-[60px]"></div>
                     </div>
-                    {/* Decorative Background Elements */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-[80px]"></div>
-                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24 blur-[60px]"></div>
-                </div>
 
-                {/* Stats Grid */}
-
-
-                <div className="space-y-10">
-                    {/* Quick Actions */}
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-3 mb-4 ml-1">
-                            <Zap className="w-5 h-5 text-[#5c52d2]" />
-                            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Quick Actions</h2>
-                        </div>
-                        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {quickActions.map((action, i) => (
-                                <Card
-                                    key={i}
-                                    onClick={() => navigate(action.path)}
-                                    className="border border-gray-100 shadow-sm hover:shadow-md transition-all rounded-3xl bg-white p-6 group cursor-pointer"
-                                >
-                                    <div className="flex flex-col items-start gap-5">
-                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${action.color === 'blue' ? 'bg-blue-50 text-blue-500' :
-                                            action.color === 'green' ? 'bg-green-50 text-green-500' :
-                                                action.color === 'orange' ? 'bg-orange-50 text-orange-500' :
-                                                    'bg-purple-50 text-purple-500'
-                                            }`}>
-                                            <action.icon className="w-6 h-6" />
-                                        </div>
-                                        <div className="flex-1 w-full">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <h4 className="font-black text-gray-900 text-lg">{action.title}</h4>
-                                                <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-[#5c52d2] transition-colors" />
+                    <div className="space-y-12">
+                        {/* Quick Actions */}
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3 mb-4 ml-1 text-white">
+                                <Zap className="w-6 h-6 text-yellow-300" />
+                                <h2 className="text-2xl font-black tracking-tight drop-shadow-md">Quick Actions</h2>
+                            </div>
+                            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                {quickActions.map((action, i) => (
+                                    <motion.div
+                                        key={i}
+                                        whileHover={{ y: -5 }}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: i * 0.1 }}
+                                    >
+                                        <Card
+                                            onClick={() => navigate(action.path)}
+                                            className="border-0 bg-white/90 backdrop-blur-sm shadow-xl hover:shadow-2xl transition-all rounded-3xl p-6 group cursor-pointer h-full"
+                                        >
+                                            <div className="flex flex-col items-start gap-5 h-full">
+                                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all shadow-inner ${action.color === 'blue' ? 'bg-blue-50 text-blue-600' :
+                                                    action.color === 'green' ? 'bg-green-50 text-green-600' :
+                                                        action.color === 'orange' ? 'bg-orange-50 text-orange-600' :
+                                                            'bg-purple-50 text-purple-600'
+                                                    }`}>
+                                                    <action.icon className="w-7 h-7" />
+                                                </div>
+                                                <div className="flex-1 w-full flex flex-col justify-between">
+                                                    <div>
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <h4 className="font-extrabold text-gray-900 text-lg group-hover:text-[#5c52d2] transition-colors">{action.title}</h4>
+                                                            <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-[#5c52d2] transition-colors" />
+                                                        </div>
+                                                        <p className="text-sm font-medium text-gray-500 leading-relaxed">{action.desc}</p>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <p className="text-sm font-medium text-gray-400 leading-snug">{action.desc}</p>
+                                        </Card>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* More Actions */}
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3 mb-4 ml-1 text-white">
+                                <Plus className="w-6 h-6 text-yellow-300" />
+                                <h2 className="text-2xl font-black tracking-tight drop-shadow-md">More Actions</h2>
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <motion.button
+                                    whileHover={{ scale: 1.01 }}
+                                    whileTap={{ scale: 0.99 }}
+                                    onClick={() => navigate('/interview')}
+                                    className="w-full bg-white/90 backdrop-blur-sm border-0 rounded-3xl p-6 flex justify-between items-center group shadow-lg hover:shadow-xl transition-all"
+                                >
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center group-hover:bg-red-100 transition-colors">
+                                            <Mic2 className="w-6 h-6" />
+                                        </div>
+                                        <div className="text-left">
+                                            <span className="block font-black text-gray-900 text-lg group-hover:text-red-600 transition-colors">Mock Interview</span>
+                                            <span className="text-sm text-gray-500 font-medium">Practice with AI</span>
                                         </div>
                                     </div>
-                                </Card>
-                            ))}
+                                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-all">
+                                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                    </div>
+                                </motion.button>
+
+                                <motion.button
+                                    whileHover={{ scale: 1.01 }}
+                                    whileTap={{ scale: 0.99 }}
+                                    onClick={() => navigate('/jobs')}
+                                    className="w-full bg-white/90 backdrop-blur-sm border-0 rounded-3xl p-6 flex justify-between items-center group shadow-lg hover:shadow-xl transition-all"
+                                >
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                                            <Briefcase className="w-6 h-6" />
+                                        </div>
+                                        <div className="text-left">
+                                            <span className="block font-black text-gray-900 text-lg group-hover:text-blue-600 transition-colors">Job Matching</span>
+                                            <span className="text-sm text-gray-500 font-medium">Find your fit</span>
+                                        </div>
+                                    </div>
+                                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all">
+                                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                    </div>
+                                </motion.button>
+                            </div>
                         </div>
                     </div>
-
-
-
-                    {/* More Actions */}
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-3 mb-4 ml-1">
-                            <Plus className="w-5 h-5 text-[#5c52d2]" />
-                            <h2 className="text-2xl font-black text-gray-900 tracking-tight">More Actions</h2>
-                        </div>
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <button
-                                onClick={() => navigate('/interview')}
-                                className="w-full bg-white border border-gray-100 rounded-2xl p-6 flex justify-between items-center group hover:bg-[#5c52d2] transition-all shadow-sm"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center group-hover:bg-white/20 group-hover:text-white transition-colors">
-                                        <Mic2 className="w-5 h-5" />
-                                    </div>
-                                    <span className="font-black text-gray-900 group-hover:text-white transition-colors">Mock Interview</span>
-                                </div>
-                                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-white transition-all transform group-hover:translate-x-1" />
-                            </button>
-
-                            <button
-                                onClick={() => navigate('/jobs')}
-                                className="w-full bg-white border border-gray-100 rounded-2xl p-6 flex justify-between items-center group hover:bg-[#5c52d2] transition-all shadow-sm"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center group-hover:bg-white/20 group-hover:text-white transition-colors">
-                                        <Briefcase className="w-5 h-5" />
-                                    </div>
-                                    <span className="font-black text-gray-900 group-hover:text-white transition-colors">Job Matching</span>
-                                </div>
-                                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-white transition-all transform group-hover:translate-x-1" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </main>
+                </main>
+            </div>
         </div>
     );
 }

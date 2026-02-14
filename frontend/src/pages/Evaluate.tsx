@@ -8,6 +8,7 @@ import {
     BrainCircuit, ArrowRight, Loader2, MinusCircle, FileCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PremiumBackground } from '../components/PremiumBackground';
 import { analyzeResume } from '../services/resume';
 
 interface AnalysisResult {
@@ -284,7 +285,8 @@ export default function Evaluate() {
     };
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] font-sans pb-20 relative overflow-hidden">
+        <div className="min-h-screen font-sans pb-20 relative overflow-hidden animated-gradient">
+            <PremiumBackground />
             <PremiumNavbar />
 
             <main className="max-w-[1300px] mx-auto px-6 pt-16 relative z-10">
@@ -424,8 +426,6 @@ export default function Evaluate() {
                 </motion.div>
             </main>
 
-            <div className="fixed top-0 right-0 w-[800px] h-[800px] bg-purple-100/50 rounded-full -mr-[300px] -mt-[300px] blur-[150px] pointer-events-none -z-10" />
-            <div className="fixed bottom-0 left-0 w-[600px] h-[600px] bg-indigo-50/50 rounded-full -ml-[200px] -mb-[200px] blur-[120px] pointer-events-none -z-10" />
         </div>
     );
 }

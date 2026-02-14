@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform, useInView } from 'framer-motion';
+import { useState, useEffect, useRef, MouseEvent } from 'react';
+import { motion, AnimatePresence, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { PremiumBackground } from '../components/PremiumBackground';
 import {
     Sparkles,
-    Zap,
     CheckCircle2,
     FileText,
     Target,
@@ -13,52 +12,55 @@ import {
     Play,
     ChevronRight,
     Search,
-    BarChart3,
-    Star,
-    Shield,
-    Infinity,
-    Mail,
     Facebook,
     Twitter,
     Linkedin,
-    ExternalLink,
-    GraduationCap
+    Mail,
+    GraduationCap,
+    ArrowRight,
+    MousePointer2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// Helper component for animated numbers
-const StatCounter = ({ value, label }: { value: string, label: string }) => {
-    const ref = useRef(null);
-    const isInView = useInView(ref, { once: true });
-    const [count, setCount] = useState(0);
+// 3D Tilt Card Component
+const TiltCard = ({ children, className }: { children: React.ReactNode, className?: string }) => {
+    const x = useMotionValue(0);
+    const y = useMotionValue(0);
+    const rotateX = useTransform(y, [-100, 100], [30, -30]);
+    const rotateY = useTransform(x, [-100, 100], [-30, 30]);
 
-    useEffect(() => {
-        if (isInView) {
-            let start = 0;
-            const end = parseInt(value.replace(/[,+]/g, ''));
-            const duration = 2000;
-            const increment = end / (duration / 16);
+    function handleMouseMove(event: MouseEvent<HTMLDivElement>) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height;
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+        const xPct = mouseX / width - 0.5;
+        const yPct = mouseY / height - 0.5;
+        x.set(xPct * 200);
+        y.set(yPct * 200);
+    }
 
-            const timer = setInterval(() => {
-                start += increment;
-                if (start >= end) {
-                    setCount(end);
-                    clearInterval(timer);
-                } else {
-                    setCount(Math.floor(start));
-                }
-            }, 16);
-            return () => clearInterval(timer);
-        }
-    }, [isInView, value]);
+    function handleMouseLeave() {
+        x.set(0);
+        y.set(0);
+    }
 
     return (
-        <div ref={ref} className="space-y-1">
-            <p className="text-4xl md:text-5xl font-black text-white">
-                {count.toLocaleString()}{value.includes('+') ? '+' : value.includes('%') ? '%' : ''}
-            </p>
-            <p className="text-purple-200/60 font-bold uppercase text-[10px] tracking-[0.2em]">{label}</p>
-        </div>
+        <motion.div
+            style={{
+                rotateX,
+                rotateY,
+                transformStyle: "preserve-3d",
+            }}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            className={className}
+        >
+            <div style={{ transform: "translateZ(75px)", transformStyle: "preserve-3d" }}>
+                {children}
+            </div>
+        </motion.div>
     );
 };
 
@@ -66,6 +68,13 @@ export default function Landing() {
     const [activeFeature, setActiveFeature] = useState('resume');
     const [scrolled, setScrolled] = useState(false);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'info' } | null>(null);
+
+    const { scrollYProgress } = useScroll();
+    const scaleX = useSpring(scrollYProgress, {
+        stiffness: 100,
+        damping: 30,
+        restDelta: 0.001
+    });
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -110,7 +119,13 @@ export default function Landing() {
     };
 
     return (
-        <div className="relative min-h-screen font-inter overflow-x-hidden bg-gray-50 scroll-smooth">
+        <div className="relative min-h-screen font-inter overflow-x-hidden bg-gray-50 selection:bg-purple-200 selection:text-purple-900">
+            {/* Scroll Progress Bar */}
+            <motion.div
+                className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 origin-left z-[100]"
+                style={{ scaleX }}
+            />
+
             {/* Toast */}
             <AnimatePresence>
                 {toast && (
@@ -118,24 +133,28 @@ export default function Landing() {
                         initial={{ x: 300, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         exit={{ x: 300, opacity: 0 }}
-                        className={`fixed top-24 right-4 px-6 py-4 rounded-xl shadow-2xl text-white z-[100] ${toast.type === 'success' ? 'bg-green-500' : 'bg-blue-500'
-                            }`}
+                        className={`fixed top-24 right-4 px-6 py-4 rounded-xl shadow-2xl text-white z-[100] backdrop-blur-md border border-white/20 flex items-center gap-3 ${toast.type === 'success' ? 'bg-green-500/90' : 'bg-blue-500/90'}`}
                     >
-                        {toast.message}
+                        {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+                        <span className="font-bold">{toast.message}</span>
                     </motion.div>
                 )}
             </AnimatePresence>
 
             {/* Navigation */}
-            <nav className={`fixed w-full top-0 z-50 transition-all duration-500 px-4 sm:px-8 py-4 ${scrolled ? 'bg-white shadow-xl py-3' : 'bg-transparent shadow-none'
-                }`}>
+            <nav className={`fixed w-full top-0 z-50 transition-all duration-500 px-4 sm:px-8 py-4 ${scrolled ? 'bg-white/80 backdrop-blur-xl shadow-lg py-3 border-b border-gray-100' : 'bg-transparent'}`}>
                 <div className="max-w-7xl mx-auto flex justify-between items-center">
                     <div className="flex items-center space-x-3 group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-                        <div className="w-12 h-12 bg-white text-[#5c52d2] rounded-2xl flex items-center justify-center transform group-hover:rotate-12 transition-transform shadow-lg border border-white/20">
-                            <GraduationCap className="w-7 h-7" />
-                        </div>
-                        <span className={`text-2xl font-black tracking-tighter ${scrolled ? "bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent" : "text-white"
-                            }`}>VidyaMitra</span>
+                        <motion.div
+                            whileHover={{ rotate: 12, scale: 1.1 }}
+                            className="w-12 h-12 bg-white text-[#5c52d2] rounded-2xl flex items-center justify-center shadow-lg border border-white/20 relative overflow-hidden"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-tr from-purple-100 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <GraduationCap className="w-7 h-7 relative z-10" />
+                        </motion.div>
+                        <span className={`text-2xl font-black tracking-tighter ${scrolled ? "text-gray-900" : "text-white"}`}>
+                            Vidya<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">Mitra</span>
+                        </span>
                     </div>
 
                     <div className="hidden md:flex items-center space-x-10">
@@ -143,19 +162,22 @@ export default function Landing() {
                             <a
                                 key={item}
                                 href={`#${item.toLowerCase()}`}
-                                className={`font-bold text-sm uppercase tracking-widest transition-all hover:scale-105 ${scrolled ? 'text-gray-600 hover:text-purple-600' : 'text-white/80 hover:text-white'
-                                    }`}
+                                className={`font-bold text-sm uppercase tracking-widest transition-all hover:scale-105 relative group ${scrolled ? 'text-gray-600 hover:text-purple-600' : 'text-white/80 hover:text-white'}`}
                             >
                                 {item}
+                                <span className={`absolute -bottom-1 left-0 w-0 h-0.5 transition-all group-hover:w-full ${scrolled ? 'bg-purple-600' : 'bg-white'}`}></span>
                             </a>
                         ))}
                     </div>
 
                     <div className="flex items-center space-x-4">
-                        <Link to="/login" className={`font-bold transition-colors ${scrolled ? 'text-purple-600' : 'text-white hover:text-yellow-300'
-                            }`}>Sign In</Link>
+                        <Link to="/login">
+                            <Button variant="ghost" className={`font-bold hover:bg-white/10 ${scrolled ? 'text-gray-600 hover:text-purple-600 hover:bg-purple-50' : 'text-white'}`}>
+                                Sign In
+                            </Button>
+                        </Link>
                         <Link to="/register">
-                            <Button className={`font-black rounded-xl transition-all h-11 px-8 ${scrolled ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white hover:scale-105' : 'bg-white text-purple-900 hover:bg-yellow-300 shadow-xl'
+                            <Button className={`font-black rounded-xl transition-all h-11 px-8 shadow-xl hover:shadow-2xl hover:-translate-y-1 ${scrolled ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white' : 'bg-white text-purple-900 hover:bg-yellow-300'
                                 }`}>
                                 Get Started
                             </Button>
@@ -167,228 +189,291 @@ export default function Landing() {
             {/* Hero Section */}
             <section id="home" className="relative pt-32 pb-24 overflow-hidden min-h-screen flex items-center animated-gradient">
                 <PremiumBackground />
-                <div className="max-w-7xl mx-auto px-4 sm:px-8 relative z-10">
+
+                {/* Floating Particles */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    {[...Array(20)].map((_, i) => (
+                        <motion.div
+                            key={i}
+                            className="absolute rounded-full bg-white/10 blur-xl"
+                            style={{
+                                width: Math.random() * 300 + 50,
+                                height: Math.random() * 300 + 50,
+                                left: `${Math.random() * 100}%`,
+                                top: `${Math.random() * 100}%`,
+                            }}
+                            animate={{
+                                y: [0, Math.random() * 100 - 50],
+                                x: [0, Math.random() * 100 - 50],
+                                scale: [1, 1.2, 1],
+                                opacity: [0.1, 0.3, 0.1],
+                            }}
+                            transition={{
+                                duration: Math.random() * 10 + 10,
+                                repeat: Infinity,
+                                ease: "linear",
+                            }}
+                        />
+                    ))}
+                </div>
+
+                <div className="max-w-7xl mx-auto px-4 sm:px-8 relative z-10 w-full">
                     <div className="grid lg:grid-cols-2 gap-16 items-center">
                         <motion.div
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8 }}
+                            initial={{ opacity: 0, x: -50 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
                             className="text-white space-y-8"
                         >
-
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-yellow-300 font-bold text-sm tracking-wide"
+                            >
+                                <Sparkles className="w-4 h-4" />
+                                <span>#1 AI Career Assistant</span>
+                            </motion.div>
 
                             <h1 className="text-6xl md:text-[5.5rem] font-black leading-[1] tracking-tighter drop-shadow-2xl">
-                                Your Intelligent <br />
-                                <span className="typing-animation inline-block text-yellow-300 italic">Career Agent</span>
+                                Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-200 to-indigo-200">Intelligent</span> <br />
+                                <span className="relative inline-block">
+                                    <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-orange-300 italic">Career Agent</span>
+                                    <motion.svg className="absolute w-full h-3 -bottom-1 left-0 text-yellow-500 z-0" viewBox="0 0 100 10" preserveAspectRatio="none">
+                                        <motion.path d="M0 5 Q 50 10 100 5" fill="transparent" strokeWidth="4" stroke="currentColor" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.8 }} />
+                                    </motion.svg>
+                                </span>
                             </h1>
 
-                            <p className="text-xl text-purple-50 max-w-xl leading-relaxed font-medium opacity-90">
-                                Transform your career journey with AI-powered resume analysis, personalized training, and mock interviews that prepare you for success.
+                            <p className="text-xl text-purple-100 max-w-xl leading-relaxed font-medium opacity-90">
+                                Stop guessing. Start growing. Let our AI analyze your potential, optimize your resume, and guide you to your dream job with surgical precision.
                             </p>
 
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4 }}
+                                className="flex flex-wrap gap-4"
+                            >
+                                <Link to="/register">
+                                    <Button size="lg" className="h-16 px-10 rounded-2xl bg-white text-purple-900 hover:bg-yellow-300 font-black text-lg shadow-[0_20px_40px_-10px_rgba(255,255,255,0.3)] hover:-translate-y-1 transition-all flex items-center gap-2 group">
+                                        Launch Career
+                                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    </Button>
+                                </Link>
 
+                            </motion.div>
 
 
                         </motion.div>
 
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.8, x: 100 }}
-                            animate={{ opacity: 1, scale: 1, x: 0 }}
-                            transition={{ duration: 1, type: 'spring' }}
-                            className="hidden lg:block relative"
-                        >
-                            <div className="bg-white/95 backdrop-blur-xl rounded-[3rem] shadow-[0_50px_100px_-15px_rgba(0,0,0,0.3)] p-10 space-y-8 relative overflow-hidden border border-white/50 animate-float">
-                                <div className="flex items-center justify-between p-6 bg-gradient-to-r from-green-50 to-green-100 rounded-2xl border border-green-200 shadow-sm">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-green-500 rounded-2xl flex items-center justify-center shadow-lg text-white">
-                                            <CheckCircle2 className="w-7 h-7" />
+                        <div className="hidden lg:flex justify-center perspective-1000">
+                            <TiltCard className="relative w-full max-w-lg cursor-none group">
+                                <motion.div
+                                    className="absolute -inset-1 bg-gradient-to-r from-yellow-400 to-purple-600 rounded-[2.5rem] blur opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"
+                                    animate={{
+                                        scale: [1, 1.02, 1],
+                                        rotate: [0, 1, -1, 0]
+                                    }}
+                                    transition={{ duration: 5, repeat: Infinity }}
+                                ></motion.div>
+                                <div className="relative bg-[#0F172A]/90 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl p-8 overflow-hidden">
+                                    {/* Mock UI */}
+                                    <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 p-0.5">
+                                                <div className="w-full h-full rounded-full bg-[#0F172A] flex items-center justify-center">
+                                                    <span className="font-bold text-white">US</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-white font-bold">Welcome, User</h3>
+                                                <p className="text-gray-400 text-xs">Software Engineer</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-black text-gray-900 text-lg leading-tight">Resume Optimized</p>
-                                            <p className="text-sm text-gray-600 font-bold">Match Score: <span className="text-green-600">87.4%</span></p>
-                                        </div>
+                                        {/* Badge Removed */}
                                     </div>
-                                    <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center text-green-600 font-black">✓</div>
-                                </div>
 
-                                <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-blue-100 rounded-2xl border border-blue-200 shadow-sm">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg text-white">
-                                            <Search className="w-7 h-7" />
+                                    <div className="grid grid-cols-2 gap-4 mb-8">
+                                        <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-2">
+                                            <p className="text-gray-400 text-xs font-bold uppercase">Resume Score</p>
+                                            <p className="text-3xl font-black text-white flex items-end gap-2">
+                                                92 <span className="text-sm text-green-400 font-bold mb-1">↑ 12%</span>
+                                            </p>
+                                            <div className="h-1.5 w-full bg-gray-700 rounded-full overflow-hidden">
+                                                <motion.div
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: "92%" }}
+                                                    transition={{ delay: 1, duration: 1.5 }}
+                                                    className="h-full bg-green-500 rounded-full"
+                                                />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-black text-gray-900 text-lg leading-tight">Skills Mapped</p>
-                                            <p className="text-sm text-gray-600 font-bold"><span className="text-blue-600">14 critical</span> skills found</p>
+                                        <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-2">
+                                            <p className="text-gray-400 text-xs font-bold uppercase">Interviews</p>
+                                            <p className="text-3xl font-black text-white flex items-end gap-2">
+                                                15 <span className="text-sm text-purple-400 font-bold mb-1">Completed</span>
+                                            </p>
+                                            <div className="flex -space-x-1">
+                                                {[1, 2, 3].map(i => <div key={i} className="w-6 h-6 rounded-full bg-gray-600 border border-[#0F172A]"></div>)}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                                </div>
 
-                                <div className="pt-6 px-4">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <span className="text-xs font-black text-gray-400 uppercase tracking-[0.3em]">Hiring Probability</span>
-                                        <span className="text-orange-600 font-black text-xl">85%</span>
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center text-sm font-bold text-white mb-2">
+                                            <span>Skill Growth</span>
+                                            <span>Last 30 Days</span>
+                                        </div>
+                                        <div className="h-32 flex items-end justify-between gap-2">
+                                            {[40, 65, 50, 80, 60, 90, 75].map((h, i) => (
+                                                <motion.div
+                                                    key={i}
+                                                    initial={{ height: 0 }}
+                                                    animate={{ height: `${h}%` }}
+                                                    transition={{ delay: 1.5 + (i * 0.1), duration: 0.5 }}
+                                                    className="w-full bg-purple-500/30 rounded-t-lg relative overflow-hidden group hover:bg-purple-500 transition-colors"
+                                                >
+                                                    <div className="absolute top-0 left-0 w-full h-1 bg-purple-400/50"></div>
+                                                </motion.div>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="h-5 w-full bg-gray-100 rounded-full overflow-hidden border-4 border-white shadow-inner">
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: '85%' }}
-                                            transition={{ duration: 2, delay: 0.5 }}
-                                            className="h-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 rounded-full"
-                                        />
-                                    </div>
+
+                                    {/* Cursor follower overlay */}
+                                    <motion.div
+                                        className="absolute pointer-events-none"
+                                        style={{ x: 100, y: 100 }}
+                                        animate={{ x: [50, 200, 300, 100], y: [50, 150, 50, 100] }}
+                                        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                                    >
+                                        <MousePointer2 className="w-6 h-6 text-yellow-400 fill-yellow-400 drop-shadow-lg" />
+                                        <div className="ml-4 mt-2 px-3 py-1 bg-yellow-400 text-black text-xs font-bold rounded-lg shadow-lg">
+                                            Analyzing Resume...
+                                        </div>
+                                    </motion.div>
                                 </div>
-                            </div>
-                            {/* Decorative Elements */}
-                            <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-400/20 rounded-full blur-[80px]"></div>
-                            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-400/20 rounded-full blur-[80px]"></div>
-                        </motion.div>
+                            </TiltCard>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/* Features Section */}
-            <section id="features" className="py-32 bg-white relative z-10 overflow-hidden">
-                <div className="max-w-7xl mx-auto px-4 sm:px-8">
+            {/* Features Section - Interactive Tabs */}
+            <section id="features" className="py-32 relative z-10 overflow-hidden animated-gradient">
+                <PremiumBackground />
+                <div className="max-w-7xl mx-auto px-4 sm:px-8 relative">
                     <div className="text-center max-w-3xl mx-auto mb-20 space-y-6">
                         <motion.span
                             initial={{ opacity: 0 }}
                             whileInView={{ opacity: 1 }}
-                            className="text-[#667eea] font-black uppercase tracking-[0.4em] text-xs px-4 py-2 bg-blue-50 rounded-full"
+                            className="text-[#5c52d2] font-black uppercase tracking-[0.4em] text-xs px-6 py-2 bg-purple-50 rounded-full border border-purple-100"
                         >
-                            Powerful Ecosystem
+                            Powerhouse Features
                         </motion.span>
                         <motion.h2
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
-                            className="text-5xl md:text-6xl font-black tracking-tighter text-gray-900"
+                            className="text-5xl md:text-7xl font-black tracking-tighter text-gray-900"
                         >
-                            Everything You Need to <span className="bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent italic">Succeed</span>
+                            Built for <span className="bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent italic px-2">Greatness</span>
                         </motion.h2>
-                        <motion.p
-                            initial={{ opacity: 0 }}
-                            whileInView={{ opacity: 1 }}
-                            className="text-xl text-gray-500 font-medium leading-relaxed"
-                        >
-                            Experience the future of career development with our proprietary AI platform.
-                        </motion.p>
                     </div>
 
-                    {/* Feature Tabs */}
-                    <div className="flex flex-wrap justify-center gap-4 mb-20">
+                    {/* Interactive Tabs */}
+                    <div className="flex flex-wrap justify-center gap-4 mb-16">
                         {Object.entries(features).map(([key, feature]) => {
                             const Icon = feature.icon;
+                            const isActive = activeFeature === key;
                             return (
-                                <button
+                                <motion.button
                                     key={key}
                                     onClick={() => setActiveFeature(key)}
-                                    className={`px-10 py-5 rounded-[2rem] font-black transition-all flex items-center gap-3 transition-all ${activeFeature === key
-                                        ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-[0_20px_40px_-10px_rgba(102,126,234,0.4)] scale-105'
-                                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900 border border-transparent'
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className={`px-8 py-4 rounded-full font-bold transition-all flex items-center gap-3 border-2 ${isActive
+                                        ? 'border-purple-600 bg-purple-600 text-white shadow-xl shadow-purple-200'
+                                        : 'border-transparent bg-gray-100 text-gray-500 hover:bg-white hover:border-gray-200 hover:shadow-lg'
                                         }`}
                                 >
-                                    <Icon className={`w-5 h-5 ${activeFeature === key ? 'text-white' : 'text-gray-400'}`} />
-                                    {key.charAt(0).toUpperCase() + key.slice(1)} Analysis
-                                </button>
+                                    <Icon className={`w-5 h-5 ${isActive ? 'text-yellow-300' : 'text-gray-400'}`} />
+                                    {key.charAt(0).toUpperCase() + key.slice(1)}
+                                </motion.button>
                             );
                         })}
                     </div>
 
-                    {/* Feature Content */}
-                    <div className="bg-gray-50/50 rounded-[4rem] p-12 border border-gray-100 shadow-inner">
+                    <div className="relative">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={activeFeature}
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 1.05 }}
-                                transition={{ duration: 0.5 }}
-                                className="grid lg:grid-cols-2 gap-20 items-center"
+                                initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+                                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                                exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
+                                transition={{ duration: 0.4 }}
+                                className="bg-white rounded-[3rem] p-8 md:p-16 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] border border-gray-100 relative overflow-hidden"
                             >
-                                <div className="space-y-10">
-                                    <div className={`w-20 h-20 bg-${features[activeFeature as keyof typeof features].color}-100 rounded-3xl flex items-center justify-center text-${features[activeFeature as keyof typeof features].color}-600`}>
-                                        {(() => {
-                                            const Icon = features[activeFeature as keyof typeof features].icon;
-                                            return <Icon className="w-10 h-10" />;
-                                        })()}
+                                <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-${features[activeFeature as keyof typeof features].color}-400 to-${features[activeFeature as keyof typeof features].color}-600`}></div>
+                                <div className="grid lg:grid-cols-2 gap-20 items-center">
+                                    <div className="space-y-10 relative z-10">
+                                        <div className={`inline-flex p-4 rounded-2xl bg-${features[activeFeature as keyof typeof features].color}-50 text-${features[activeFeature as keyof typeof features].color}-600`}>
+                                            {(() => {
+                                                const Icon = features[activeFeature as keyof typeof features].icon;
+                                                return <Icon className="w-10 h-10" />;
+                                            })()}
+                                        </div>
+                                        <div className="space-y-6">
+                                            <h3 className="text-4xl font-black tracking-tight text-gray-900">
+                                                {features[activeFeature as keyof typeof features].title}
+                                            </h3>
+                                            <p className="text-xl text-gray-600 leading-relaxed font-medium">
+                                                {features[activeFeature as keyof typeof features].desc}
+                                            </p>
+                                        </div>
+                                        <ul className="space-y-4">
+                                            {features[activeFeature as keyof typeof features].points.map((point, i) => (
+                                                <motion.li
+                                                    key={i}
+                                                    initial={{ opacity: 0, x: -20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: 0.1 * i }}
+                                                    className="flex items-center gap-4 text-gray-800 font-bold p-4 bg-gray-50 rounded-xl hover:bg-white hover:shadow-md transition-all border border-transparent hover:border-gray-100"
+                                                >
+                                                    <CheckCircle2 className={`w-6 h-6 text-${features[activeFeature as keyof typeof features].color}-500`} />
+                                                    {point}
+                                                </motion.li>
+                                            ))}
+                                        </ul>
                                     </div>
-                                    <div className="space-y-6">
-                                        <h3 className="text-4xl font-black tracking-tight text-gray-900">
-                                            {features[activeFeature as keyof typeof features].title}
-                                        </h3>
-                                        <p className="text-xl text-gray-600 leading-relaxed font-medium">
-                                            {features[activeFeature as keyof typeof features].desc}
-                                        </p>
-                                    </div>
-                                    <ul className="grid gap-5">
-                                        {features[activeFeature as keyof typeof features].points.map((point, i) => (
-                                            <li key={i} className="flex items-center gap-4 text-gray-800 font-bold group">
-                                                <div className="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center text-green-600 group-hover:bg-green-500 group-hover:text-white transition-all">
-                                                    <CheckCircle2 className="w-5 h-5" />
-                                                </div>
-                                                {point}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
 
-                                <div className="relative group">
-                                    <div className="absolute inset-0 bg-blue-500/10 blur-[120px] rounded-full group-hover:bg-purple-500/20 transition-all duration-700"></div>
-                                    <div className="relative bg-white rounded-[3rem] p-12 shadow-2xl border border-gray-50 overflow-hidden">
-                                        {activeFeature === 'resume' && (
-                                            <div className="space-y-10">
-                                                <div className="flex justify-between items-end">
-                                                    <div>
-                                                        <p className="font-black text-gray-400 uppercase tracking-widest text-xs mb-2">AI Assessment Report</p>
-                                                        <h4 className="text-3xl font-black text-gray-900">Summary Quality</h4>
-                                                    </div>
-                                                    <span className="text-7xl font-black bg-gradient-to-br from-purple-600 to-blue-600 bg-clip-text text-transparent">87</span>
-                                                </div>
-                                                <div className="space-y-7">
-                                                    {[
-                                                        { l: "ATS Compliance", v: 95, color: "#10b981" },
-                                                        { l: "Action Verbs", v: 82, color: "#3b82f6" },
-                                                        { l: "Readability", v: 90, color: "#8b5cf6" }
-                                                    ].map((item, i) => (
-                                                        <div key={i} className="space-y-3">
-                                                            <div className="flex justify-between font-black text-sm uppercase tracking-widest">
-                                                                <span className="text-gray-400">{item.l}</span>
-                                                                <span className="text-gray-900">{item.v}%</span>
-                                                            </div>
-                                                            <div className="h-4 w-full bg-gray-50 rounded-full overflow-hidden border border-gray-100 p-1">
-                                                                <motion.div
-                                                                    initial={{ width: 0 }}
-                                                                    animate={{ width: `${item.v}%` }}
-                                                                    className="h-full rounded-full"
-                                                                    style={{ backgroundColor: item.color }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="p-6 bg-yellow-50 rounded-3xl border border-yellow-100 flex gap-4 items-start shadow-sm">
-                                                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center shrink-0">
-                                                        <Sparkles className="w-6 h-6 text-yellow-500" />
-                                                    </div>
-                                                    <p className="text-yellow-900 font-bold leading-relaxed text-sm">
-                                                        <strong>Pro Tip:</strong> Your impact statements are strong, but adding specific currency values or percentages to your achievements will boost your score to 95+.
-                                                    </p>
-                                                </div>
+                                    {/* Dynamic Visual Side */}
+                                    <div className="relative h-[500px] bg-gray-50 rounded-[2.5rem] border border-gray-100 flex items-center justify-center overflow-hidden group">
+                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.1),rgba(255,255,255,0))]"></div>
+
+                                        {/* Mock Visuals based on Feature */}
+                                        <motion.div
+                                            className="text-center space-y-6 relative z-10"
+                                            initial={{ scale: 0.8 }}
+                                            animate={{ scale: 1 }}
+                                            transition={{ type: "spring", stiffness: 200 }}
+                                        >
+                                            <div className="w-32 h-32 mx-auto bg-white rounded-full shadow-2xl flex items-center justify-center relative">
+                                                <div className="absolute inset-0 rounded-full border-4 border-gray-100"></div>
+                                                <motion.div
+                                                    className={`absolute inset-0 rounded-full border-4 border-${features[activeFeature as keyof typeof features].color}-500 border-t-transparent`}
+                                                    animate={{ rotate: 360 }}
+                                                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                                                ></motion.div>
+                                                {(() => {
+                                                    const Icon = features[activeFeature as keyof typeof features].icon;
+                                                    return <Icon className={`w-12 h-12 text-${features[activeFeature as keyof typeof features].color}-500`} />;
+                                                })()}
                                             </div>
-                                        )}
-                                        {/* Other feature previews would go here, omitting for brevity in this task but they follow the same style */}
-                                        {activeFeature !== 'resume' && (
-                                            <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
-                                                <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center">
-                                                    {(() => {
-                                                        const Icon = features[activeFeature as keyof typeof features].icon;
-                                                        return <Icon className="w-12 h-12 text-gray-300" />;
-                                                    })()}
-                                                </div>
-                                                <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-sm">Interactive Preview Loading...</p>
-                                                <Button variant="outline" className="rounded-full px-8 font-black">Learn More</Button>
+                                            <div className="bg-white px-8 py-3 rounded-full shadow-lg border border-gray-100 font-black text-gray-900">
+                                                AI Analysis in Progress...
                                             </div>
-                                        )}
+                                        </motion.div>
+
                                     </div>
                                 </div>
                             </motion.div>
@@ -397,119 +482,61 @@ export default function Landing() {
                 </div>
             </section>
 
-            {/* Live Demo Section */}
-            <section id="demo" className="py-32 bg-gray-900 overflow-hidden relative">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-transparent to-transparent opacity-50"></div>
-                <div className="max-w-7xl mx-auto px-4 sm:px-8 relative z-10">
-                    <div className="text-center mb-20 space-y-4">
-                        <h2 className="text-5xl md:text-6xl font-black text-white tracking-tighter">See VidyaMitra <span className="text-blue-500 italic">In Action</span></h2>
-                        <p className="text-xl text-gray-400 font-medium">Witness the future of AI-driven career intelligence.</p>
-                    </div>
+            {/* CTA Section - Acting as Demo/Get Started */}
+            {/* CTA Section - Acting as Demo/Get Started */}
+            <section id="demo" className="py-32 relative overflow-hidden animated-gradient">
+                <PremiumBackground />
 
-                    <motion.div
-                        initial={{ opacity: 0, y: 50 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        className="relative group cursor-pointer"
-                        onClick={() => showToast('Demo playback starting... (Integration Pending)', 'info')}
-                    >
-                        <div className="absolute -inset-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-[3rem] blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                        <div className="relative aspect-video bg-gray-800 rounded-[2.5rem] border border-white/10 overflow-hidden flex items-center justify-center shadow-3xl">
-                            <div className="bg-white/10 backdrop-blur-3xl p-12 rounded-full border border-white/20 group-hover:scale-110 transition-transform duration-500 shadow-2xl">
-                                <Play className="w-16 h-16 fill-white text-white translate-x-1" />
-                            </div>
-                            {/* Animated pulses */}
-                            <div className="absolute w-64 h-64 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-                        </div>
-                    </motion.div>
-                </div>
-            </section>
-
-
-            {/* CTA Section */}
-            <section className="py-40 relative overflow-hidden animated-gradient">
-                <div className="max-w-5xl mx-auto px-4 sm:px-8 text-center relative z-10 space-y-12">
+                <div className="max-w-4xl mx-auto px-4 relative z-10 text-center space-y-12">
                     <motion.h2
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        className="text-6xl md:text-[6.5rem] font-black text-white leading-[0.9] tracking-tighter"
-                    >
-                        Your Future <br />is <span className="text-yellow-300 italic">Calling.</span>
-                    </motion.h2>
-                    <p className="text-2xl text-white/80 font-medium max-w-2xl mx-auto leading-relaxed">
-                        Join 15,000+ top professionals who use VidyaMitra to dominate their industries.
-                    </p>
-                    <motion.div
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
-                        className="flex flex-wrap justify-center gap-6 pt-8"
+                        className="text-6xl md:text-8xl font-black text-white tracking-tighter"
                     >
-                        <Link to="/register">
-                            <Button size="lg" className="bg-white hover:bg-yellow-300 text-purple-900 font-black text-xl px-12 h-20 rounded-3xl shadow-3xl transition-all hover:scale-110">
-                                Get Started for Free
+                        Ready to <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-orange-500">Ascend?</span>
+                    </motion.h2>
+
+                    <p className="text-2xl text-gray-400 font-medium leading-relaxed">
+                        Join the platform that is redefining career growth for the AI age.
+                    </p>
+
+                    <div className="flex flex-col md:flex-row items-center justify-center gap-6">
+                        <Link to="/register" className="w-full md:w-auto">
+                            <Button className="w-full md:w-auto h-20 px-12 text-2xl font-black bg-white text-[#0F172A] hover:bg-yellow-300 rounded-3xl shadow-[0_0_50px_rgba(255,255,255,0.3)] hover:shadow-[0_0_80px_rgba(255,255,255,0.5)] transition-all hover:-translate-y-2">
+                                Start Free Trial
                             </Button>
                         </Link>
-                        <Button
-                            variant="outline"
-                            size="lg"
-                            className="bg-white/10 border-white/20 text-white h-20 px-10 rounded-3xl backdrop-blur-md hover:bg-white/20 text-xl font-black transition-all hover:scale-110"
-                            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                        >
-                            Explore Features
-                        </Button>
-                    </motion.div>
+                    </div>
                 </div>
             </section>
 
             {/* Footer */}
-            <footer className="bg-white pt-32 pb-16 relative z-10 border-t border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 sm:px-8">
-                    <div className="grid md:grid-cols-5 gap-16 mb-24">
-                        <div className="col-span-2 space-y-8">
-                            <div className="flex items-center space-x-3">
-                                <div className="w-12 h-12 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-2xl flex items-center justify-center shadow-lg">
-                                    <span className="text-white text-2xl font-bold">V</span>
-                                </div>
-                                <span className="text-3xl font-black tracking-tighter text-gray-900">VidyaMitra</span>
+            <footer className="bg-white border-t border-gray-100 pt-24 pb-12">
+                <div className="max-w-7xl mx-auto px-8">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-10">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-gray-900 rounded-xl flex items-center justify-center text-white">
+                                <GraduationCap className="w-6 h-6" />
                             </div>
-                            <p className="text-xl text-gray-400 font-medium leading-relaxed max-w-sm">
-                                The world's most advanced AI agent for persistent career intelligence and growth.
-                            </p>
-                            <div className="flex gap-4">
-                                {[Facebook, Twitter, Linkedin, Mail].map((Icon, i) => (
-                                    <div key={i} className="w-12 h-12 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center hover:bg-purple-600 hover:text-white transition-all cursor-pointer border border-transparent hover:border-purple-300 shadow-sm">
-                                        <Icon className="w-5 h-5" />
-                                    </div>
-                                ))}
-                            </div>
+                            <span className="text-3xl font-black tracking-tighter text-gray-900">VidyaMitra</span>
                         </div>
-
-                        {['Solutions', 'Company', 'Legal'].map((title, i) => (
-                            <div key={i} className="space-y-8">
-                                <h4 className="font-black uppercase tracking-[0.3em] text-xs text-gray-400">{title}</h4>
-                                <ul className="space-y-5">
-                                    {['Resume AI', 'Career Path', 'Interview Pro', 'Contact Us', 'Privacy'].slice(0, 5).map((link) => (
-                                        <li key={link}>
-                                            <a href="#" className="font-bold text-gray-600 hover:text-purple-600 transition-colors flex items-center gap-2 group">
-                                                {link}
-                                                <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        ))}
+                        <div className="flex gap-8 text-gray-500 font-bold">
+                            <a href="#" className="hover:text-purple-600 transition-colors">Privacy</a>
+                            <a href="#" className="hover:text-purple-600 transition-colors">Terms</a>
+                            <a href="#" className="hover:text-purple-600 transition-colors">Twitter</a>
+                            <a href="#" className="hover:text-purple-600 transition-colors">LinkedIn</a>
+                        </div>
                     </div>
-
-                    <div className="pt-12 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-8 font-bold text-sm text-gray-400">
-                        <p>&copy; 2026 VidyaMitra Intelligence. All rights reserved.</p>
-                        <div className="flex gap-10">
-                            <a href="#" className="hover:text-gray-900 transition-colors">Engineering</a>
-                            <a href="#" className="hover:text-gray-900 transition-colors">API Docs</a>
-                            <a href="#" className="hover:text-gray-900 transition-colors">Status</a>
-                        </div>
+                    <div className="mt-12 text-center text-gray-400 font-medium text-sm">
+                        &copy; 2026 VidyaMitra Intelligence. All rights reserved.
                     </div>
                 </div>
             </footer>
         </div>
     );
 }
+
+// Helper for stars
+const Star = (props: any) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+);

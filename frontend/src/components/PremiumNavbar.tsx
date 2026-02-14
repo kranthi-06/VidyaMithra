@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Button } from '@/components/ui/button';
 import { Link, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     LogOut,
     LayoutDashboard,
@@ -11,12 +12,16 @@ import {
     Mic2,
     Briefcase,
     LineChart,
-    GraduationCap
+    GraduationCap,
+    Menu,
+    X,
+    User
 } from 'lucide-react';
 
 export const PremiumNavbar = () => {
     const { user, logout } = useAuth();
     const location = useLocation();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const navItems = [
         { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -30,48 +35,126 @@ export const PremiumNavbar = () => {
     ];
 
     return (
-        <nav className="bg-[#5c52d2] border-b border-white/10 sticky top-0 z-50 py-1">
-            <div className="max-w-[1600px] mx-auto px-6">
-                <div className="flex justify-between items-center h-16">
-                    <div className="flex items-center gap-8">
-                        <Link to="/dashboard" className="flex items-center space-x-3 group mr-4">
-                            <div className="w-9 h-9 bg-white text-[#5c52d2] rounded-xl flex items-center justify-center transform group-hover:rotate-12 transition-transform shadow-lg">
+        <nav className="bg-[#5c52d2] sticky top-0 z-50 shadow-lg border-b border-white/10">
+            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center h-20">
+
+                    {/* Logo & Desktop Nav */}
+                    <div className="flex items-center gap-10">
+                        <Link to="/dashboard" className="flex items-center space-x-3 group relative z-10">
+                            <motion.div
+                                whileHover={{ rotate: 12, scale: 1.1 }}
+                                className="w-10 h-10 bg-white text-[#5c52d2] rounded-xl flex items-center justify-center shadow-xl border border-white/20"
+                            >
                                 <GraduationCap className="w-6 h-6" />
-                            </div>
-                            <span className="text-xl font-black text-white tracking-tighter">VidyāMitra</span>
+                            </motion.div>
+                            <span className="text-2xl font-black text-white tracking-tighter hidden sm:block">
+                                Vidya<span className="text-yellow-300">Mitra</span>
+                            </span>
                         </Link>
 
-                        <div className="hidden lg:flex items-center space-x-1">
+                        <div className="hidden xl:flex items-center gap-1 p-1 bg-black/10 rounded-2xl backdrop-blur-sm border border-white/5">
                             {navItems.map((item) => {
                                 const isActive = location.pathname === item.path;
                                 return (
                                     <Link
                                         key={item.label}
                                         to={item.path}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-bold text-xs uppercase tracking-wider group ${isActive
-                                            ? 'bg-white/20 text-white shadow-inner border border-white/20'
-                                            : 'text-white/70 hover:text-white hover:bg-white/10'
-                                            }`}
+                                        className="relative group"
                                     >
-                                        <item.icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-white/60 group-hover:text-white'}`} />
-                                        {item.label}
+                                        {isActive && (
+                                            <motion.div
+                                                layoutId="navbar-active"
+                                                className="absolute inset-0 bg-white rounded-xl shadow-lg"
+                                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                                            />
+                                        )}
+                                        <div className={`relative px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors font-bold text-xs uppercase tracking-wider ${isActive ? 'text-[#5c52d2]' : 'text-white/70 hover:text-white hover:bg-white/5'
+                                            }`}>
+                                            <item.icon className={`w-4 h-4 ${isActive ? 'text-[#5c52d2]' : 'opacity-70 group-hover:opacity-100'}`} />
+                                            {item.label}
+                                        </div>
                                     </Link>
                                 );
                             })}
                         </div>
                     </div>
 
-                    <div className="flex items-center space-x-4">
+                    {/* Right Side Actions */}
+                    <div className="flex items-center gap-4">
+                        <div className="hidden sm:flex items-center gap-3 pl-6 border-l border-white/10">
+                            <div className="bg-white/10 rounded-full p-0.5 border border-white/10 pr-4 flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-300 to-orange-400 p-0.5">
+                                    <div className="w-full h-full rounded-full bg-[#5c52d2] flex items-center justify-center overflow-hidden">
+                                        {/* Placeholder Avatar */}
+                                        <User size={16} className="text-white" />
+                                    </div>
+                                </div>
+                                <div className="text-xs font-bold text-white leading-tight">
+                                    <p>{user?.full_name?.split(' ')[0] || 'User'}</p>
+
+                                </div>
+                            </div>
+                        </div>
+
                         <button
                             onClick={logout}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 font-bold text-xs uppercase tracking-wider transition-all"
+                            className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-white hover:bg-white hover:text-[#5c52d2] font-bold text-xs uppercase tracking-wider transition-all border border-white/5 shadow-sm"
                         >
                             <LogOut className="w-4 h-4" />
-                            Logout
+                            <span>Sign Out</span>
+                        </button>
+
+                        <button
+                            className="xl:hidden p-2 text-white hover:bg-white/10 rounded-xl transition-colors"
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        >
+                            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* Mobile Menu */}
+            <AnimatePresence>
+                {isMobileMenuOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="xl:hidden border-t border-white/10 bg-[#5c52d2] overflow-hidden"
+                    >
+                        <div className="p-4 space-y-2">
+                            {navItems.map((item) => {
+                                const isActive = location.pathname === item.path;
+                                return (
+                                    <Link
+                                        key={item.label}
+                                        to={item.path}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${isActive
+                                            ? 'bg-white text-[#5c52d2] shadow-lg'
+                                            : 'text-white/70 hover:bg-white/10 hover:text-white'
+                                            }`}
+                                    >
+                                        <div className={`p-1.5 rounded-lg ${isActive ? 'bg-[#5c52d2]/10' : 'bg-transparent'}`}>
+                                            <item.icon className="w-5 h-5" />
+                                        </div>
+                                        {item.label}
+                                    </Link>
+                                );
+                            })}
+                            <button
+                                onClick={logout}
+                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-all mt-4 border-t border-white/10 pt-4"
+                            >
+                                <LogOut className="w-5 h-5" />
+                                Sign Out
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </nav>
     );
 };
