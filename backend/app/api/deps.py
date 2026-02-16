@@ -54,3 +54,14 @@ def get_current_active_user(
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+def get_current_user_optional(
+    db: Session = Depends(get_db), 
+    token: Optional[str] = Depends(OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/login/access-token", auto_error=False))
+) -> Optional[User]:
+    if not token:
+        return None
+    try:
+        return get_current_user(db, token)
+    except:
+        return None

@@ -10,7 +10,7 @@ router = APIRouter()
 async def analyze_resume(
     file: UploadFile = File(...),
     job_description: str = Form(""),
-    current_user = Depends(deps.get_current_active_user),
+    current_user = Depends(deps.get_current_user_optional),
 ) -> Any:
     """
     Upload a resume (PDF) and get AI analysis.
@@ -57,7 +57,7 @@ async def analyze_resume_text(
     text: str = Form(...),
     filename: str = Form("resume.txt"),
     job_description: str = Form(""),
-    current_user = Depends(deps.get_current_active_user),
+    current_user = Depends(deps.get_current_user_optional),
 ) -> Any:
     """
     Analyze resume text directly (e.g., after client-side OCR).
