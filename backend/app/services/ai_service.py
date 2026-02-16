@@ -20,9 +20,13 @@ class AIService:
         # Initialize Gemini
         self.gemini_configured = False
         if settings.GEMINI_API_KEY and len(settings.GEMINI_API_KEY) > 10:
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            self.gemini_model = genai.GenerativeModel('gemini-pro')
-            self.gemini_configured = True
+            try:
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                # Using 1.5-flash as it is faster and has a high free-tier quota
+                self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+                self.gemini_configured = True
+            except Exception as e:
+                logger.error(f"Failed to configure Gemini: {str(e)}")
 
     async def chat_completion(self, messages: List[Dict[str, str]], system_prompt: Optional[str] = None) -> str:
         """
@@ -37,7 +41,7 @@ class AIService:
                     full_messages = [{"role": "system", "content": system_prompt}] + messages
                 
                 response = await self.openai_client.chat.completions.create(
-                    model="gpt-3.5-turbo",
+                    model="gpt-4o-mini", # Using modern, cheaper, and more available model
                     messages=full_messages,
                     temperature=0.7,
                     timeout=15.0
@@ -142,33 +146,22 @@ class AIService:
                     ]
                 })
             
-            # Default Resume Analysis Mock
+            # Default Resume Analysis Mock (now labeled as demo data to avoid confusion)
             return json.dumps({
-                "ats_score": 88,
+                "ats_score": 0,
                 "keyword_analysis": {
-                    "matched": ["React", "FastAPI", "Python", "System Design", "Leadership"],
-                    "missing": ["Kubernetes", "Redis"],
-                    "extra": ["UI/UX Design"]
+                    "matched": ["API Connection Required"],
+                    "missing": ["Please check your OpenAI/Gemini keys in backend/.env"],
+                    "extra": []
                 },
                 "industry_fit": {
-                    "score": 92,
-                    "verdict": "Your profile shows exceptional strength in full-stack architecture and AI integration, making you a top-tier candidate for high-growth tech firms.",
-                    "top_industries": ["Artificial Intelligence", "SaaS", "FinTech"]
+                    "score": 0,
+                    "verdict": "Real-time analysis is unavailable because the AI service could not authenticate (Quota exceeded or invalid key).",
+                    "top_industries": ["Fix Required"]
                 },
-                "strengths": [
-                    "Advanced technical proficiency in modern web frameworks",
-                    "Proven track record of scaling distributed systems",
-                    "Exceptional problem-solving abilities in complex environments"
-                ],
-                "weaknesses": [
-                    "Limited documentation of container orchestration experience",
-                    "Could benefit from more quantifiable business impact metrics"
-                ],
-                "improvement_plan": [
-                    "Complete a certification in Cloud Orchestration (e.g., CKA)",
-                    "Rewrite experience bullet points using the Google XYZ formula",
-                    "Integrate more specific performance metrics into past projects"
-                ]
+                "strengths": ["System is connected but AI is offline"],
+                "weaknesses": ["Check billing on OpenAI dashboard", "Add GEMINI_API_KEY as fallback"],
+                "improvement_plan": ["Add a valid API key to backend/.env", "Restart the backend server", "Verify network connectivity"]
             })
 
         return "That's an excellent point. Could you elaborate more on your specific implementation strategy for that module?"
