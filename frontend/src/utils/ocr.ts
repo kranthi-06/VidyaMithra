@@ -1,8 +1,10 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
+// @ts-ignore - Vite worker import
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
 // Setup worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 export const extractTextFromFile = async (file: File, onProgress?: (msg: string) => void): Promise<string> => {
     const fileType = file.type;
