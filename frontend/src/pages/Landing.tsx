@@ -235,7 +235,7 @@ export default function Landing() {
                                 <span>#1 AI Career Assistant</span>
                             </motion.div>
 
-                            <h1 className="text-6xl md:text-[5.5rem] font-black leading-[1] tracking-tighter drop-shadow-2xl">
+                            <h1 className="text-4xl sm:text-6xl md:text-[5.5rem] font-black leading-[1.1] md:leading-[1] tracking-tighter drop-shadow-2xl">
                                 Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-200 to-indigo-200">Intelligent</span> <br />
                                 <span className="relative inline-block">
                                     <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-orange-300 italic">Career Agent</span>

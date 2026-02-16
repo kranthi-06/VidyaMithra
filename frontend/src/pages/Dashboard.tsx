@@ -78,10 +78,10 @@ export default function Dashboard() {
                 <main className="max-w-[1400px] mx-auto px-6 pt-10">
 
                     {/* Welcome Banner - Glassmorphism */}
-                    <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-[2.5rem] p-10 md:p-14 mb-10 text-white relative overflow-hidden shadow-2xl">
+                    <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-[1.5rem] sm:rounded-[2.5rem] p-6 sm:p-10 md:p-14 mb-10 text-white relative overflow-hidden shadow-2xl">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
-                            <div className="space-y-4">
-                                <h1 className="text-4xl md:text-5xl font-black tracking-tight drop-shadow-lg">
+                            <div className="space-y-4 text-center md:text-left">
+                                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight drop-shadow-lg">
                                     Welcome back, {user?.full_name?.split(' ')[0] || 'John'}! 👋
                                 </h1>
                                 <p className="text-white/90 text-lg font-medium drop-shadow-md">Ready to advance your career today?</p>
@@ -112,9 +112,9 @@ export default function Dashboard() {
                         <div className="space-y-6">
                             <div className="flex items-center gap-3 mb-4 ml-1 text-white">
                                 <Zap className="w-6 h-6 text-yellow-300" />
-                                <h2 className="text-2xl font-black tracking-tight drop-shadow-md">Quick Actions</h2>
+                                <h2 className="text-xl sm:text-2xl font-black tracking-tight drop-shadow-md">Quick Actions</h2>
                             </div>
-                            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                                 {quickActions.map((action, i) => (
                                     <motion.div
                                         key={i}
