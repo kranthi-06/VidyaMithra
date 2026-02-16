@@ -7,7 +7,9 @@ async def extract_text_from_pdf(file_content: bytes) -> str:
     reader = PdfReader(io.BytesIO(file_content))
     text = ""
     for page in reader.pages:
-        text += page.extract_text() + "\n"
+        page_text = page.extract_text()
+        if page_text:
+            text += page_text + "\n"
     return text
 
 async def analyze_resume_with_ai(resume_text: str, job_description: str = ""):

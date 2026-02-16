@@ -1,34 +1,39 @@
 import { useState } from 'react';
-import { analyzeResume } from '../services/resume';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import {
+    FileText,
+    Upload,
+    Sparkles,
+    TrendingUp,
+    CheckCircle2,
+    AlertCircle,
+    ArrowRight,
+    ArrowLeft,
+    Download,
+    User,
+    GraduationCap,
+    Briefcase,
+    Laptop,
+    Wrench,
+    XCircle,
+    ShieldCheck,
+    Target,
+    Cpu,
+    Layers,
+    Award,
+    Lightbulb,
+    PlusCircle
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { motion, AnimatePresence } from 'framer-motion';
-import { PremiumNavbar } from '../components/PremiumNavbar';
-import {
-    FileText,
-    Upload,
-    CheckCircle2,
-    XCircle,
-    AlertCircle,
-    TrendingUp,
-    Briefcase,
-    Zap,
-    ArrowLeft,
-    ShieldCheck,
-    Lightbulb,
-    User,
-    GraduationCap,
-    Laptop,
-    Wrench,
-    Sparkles,
-    Download,
-    ArrowRight,
-    PlusCircle
-} from 'lucide-react';
-import { PremiumBackground } from '../components/PremiumBackground';
+import { PremiumNavbar } from '@/components/PremiumNavbar';
+import { PremiumBackground } from '@/components/PremiumBackground';
+import { analyzeResumeText } from '@/services/resume';
+import { extractTextFromFile } from '@/utils/ocr';
 
 type Step = 'selection' | 'upload' | 'builder' | 'analysis' | 'templates';
 type BuilderStep = 1 | 2 | 3 | 4 | 5 | 6;
@@ -38,6 +43,7 @@ export default function ResumeBuilder() {
     const [builderStep, setBuilderStep] = useState<BuilderStep>(1);
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
+    const [ocrProgress, setOcrProgress] = useState('');
     const [analysis, setAnalysis] = useState<any>(null);
     const [error, setError] = useState('');
     const [selectedTemplate, setSelectedTemplate] = useState('modern');
@@ -63,15 +69,34 @@ export default function ResumeBuilder() {
         if (!file) return;
         setLoading(true);
         setError('');
+        setOcrProgress('Initializing extraction...');
         try {
-            const result = await analyzeResume(file);
+            // Extract text with OCR fallback
+            const text = await extractTextFromFile(file, (msg) => setOcrProgress(msg));
+
+            if (!text.trim()) {
+                throw new Error('Could not extract any text from the document. Please try a different file.');
+            }
+
+            setOcrProgress('Performing AI Analysis...');
+            const result = await analyzeResumeText(text, file.name);
             const parsedAnalysis = typeof result.analysis === 'string' ? JSON.parse(result.analysis) : result.analysis;
             setAnalysis(parsedAnalysis);
             setStep('analysis');
-        } catch (err) {
-            setError('Failed to analyze resume. Please confirm it is a valid PDF and try again.');
+        } catch (err: any) {
+            console.error('Resume Analysis Error:', err);
+            let errorMsg = 'Failed to analyze resume. Please confirm it is a valid PDF and try again.';
+            if (err.response?.data?.detail) {
+                errorMsg = typeof err.response.data.detail === 'string'
+                    ? err.response.data.detail
+                    : JSON.stringify(err.response.data.detail);
+            } else if (err.message) {
+                errorMsg = err.message;
+            }
+            setError(errorMsg);
         } finally {
             setLoading(false);
+            setOcrProgress('');
         }
     };
 
@@ -566,9 +591,21 @@ export default function ResumeBuilder() {
                                     <Button
                                         onClick={handleUpload}
                                         disabled={!file || loading}
-                                        className="h-14 px-10 rounded-2xl font-black bg-[#5c52d2] hover:bg-[#4b43b0] text-white shadow-xl shadow-purple-100 disabled:opacity-50"
+                                        className="h-14 px-10 rounded-2xl font-black bg-[#5c52d2] hover:bg-[#4b43b0] text-white shadow-xl shadow-purple-100 disabled:opacity-50 relative overflow-hidden"
                                     >
-                                        {loading ? "Analyzing..." : "Analyze Resume"}
+                                        {loading ? (
+                                            <div className="flex flex-col items-center">
+                                                <span>{ocrProgress || 'Analyzing...'}</span>
+                                            </div>
+                                        ) : "Analyze Resume"}
+                                        {loading && (
+                                            <motion.div
+                                                className="absolute bottom-0 left-0 h-1 bg-white/30"
+                                                initial={{ width: 0 }}
+                                                animate={{ width: '100%' }}
+                                                transition={{ duration: 15, ease: "linear" }}
+                                            />
+                                        )}
                                     </Button>
                                 </div>
 
@@ -924,144 +961,202 @@ export default function ResumeBuilder() {
                                     <div className="w-20 h-20 bg-yellow-50 rounded-[2rem] flex items-center justify-center mx-auto shadow-sm">
                                         <Sparkles className="w-10 h-10 text-yellow-500" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <h1 className="text-5xl font-black text-gray-900 tracking-tight">Resume Analysis Complete!</h1>
-                                        <p className="text-gray-400 text-lg font-medium">Here's what we discovered about your professional profile</p>
+                                    <div className="space-y-4">
+                                        <h1 className="text-5xl font-black text-gray-900 tracking-tight">Your Career Audit is Ready</h1>
+                                        <p className="text-gray-400 text-lg font-medium">We've powered through your profile with advanced AI</p>
                                     </div>
                                 </div>
 
-                                {/* Overall Score Card */}
-                                <Card className="border-none shadow-sm bg-white p-16 rounded-[3rem] text-center space-y-8 relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 p-8 text-blue-50/50 group-hover:text-blue-50 transition-colors">
-                                        <TrendingUp className="w-32 h-32" />
-                                    </div>
-                                    <div className="flex flex-col items-center gap-1">
-                                        <div className="flex items-center gap-3 text-blue-500 mb-2">
-                                            <TrendingUp className="w-6 h-6" />
-                                            <h3 className="text-xl font-black uppercase tracking-widest">Overall Profile Score</h3>
+                                {/* Main Stats Grid */}
+                                <div className="grid md:grid-cols-3 gap-8">
+                                    {/* Overall Score */}
+                                    <Card className="md:col-span-2 border-none shadow-sm bg-white p-12 rounded-[3.5rem] relative overflow-hidden group">
+                                        <div className="absolute -top-10 -right-10 text-blue-50/40 group-hover:scale-110 transition-transform">
+                                            <Target className="w-64 h-64" />
                                         </div>
-                                        <span className="text-[120px] leading-none font-black text-[#5c52d2] tracking-tighter">
-                                            {analysis.ats_score}%
-                                        </span>
-                                        <p className="text-xl font-bold text-gray-400 mt-4">
-                                            {analysis.ats_score > 80 ? 'Excellent profile!' : analysis.ats_score > 60 ? 'Good profile!' : 'Needs improvement'}
-                                        </p>
-                                    </div>
-                                </Card>
-
-                                {/* Info & Experience Row */}
-                                <div className="grid md:grid-cols-2 gap-8">
-                                    {/* Personal Info Card */}
-                                    <Card className="border-none shadow-sm bg-white p-10 rounded-[3rem] space-y-8">
-                                        <div className="flex items-center gap-3 text-[#5c52d2]">
-                                            <User className="w-6 h-6" />
-                                            <h3 className="text-xl font-black tracking-tight">Personal Information</h3>
-                                        </div>
-                                        <div className="space-y-6">
-                                            <div className="space-y-1">
-                                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Name</p>
-                                                <p className="font-bold text-gray-700 text-lg">{formData.personal.first} {formData.personal.last || 'GUNDA SRI VIGNESH'}</p>
+                                        <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
+                                            <div className="flex flex-col items-center">
+                                                <div className="relative">
+                                                    <span className="text-[120px] leading-none font-black text-[#5c52d2] tracking-tighter drop-shadow-sm">
+                                                        {analysis.ats_score}
+                                                    </span>
+                                                    <span className="text-4xl font-black text-[#5c52d2]/40 absolute top-4 -right-8">%</span>
+                                                </div>
+                                                <div className="bg-[#5c52d2]/10 px-6 py-2 rounded-full mt-4">
+                                                    <p className="text-[#5c52d2] font-black uppercase text-xs tracking-widest">ATS Readiness</p>
+                                                </div>
                                             </div>
-                                            <div className="space-y-1">
-                                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Email</p>
-                                                <p className="font-bold text-gray-700">{formData.personal.email || 'Not found'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Phone</p>
-                                                <p className="font-bold text-gray-700">{formData.personal.phone || 'Not detected - add your phone number'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Location</p>
-                                                <p className="font-bold text-gray-700">{formData.personal.location || 'Not specified in resume'}</p>
+                                            <div className="space-y-6 flex-1 text-center md:text-left">
+                                                <h3 className="text-3xl font-black text-gray-900">
+                                                    {analysis.ats_score > 85 ? 'Exceptional Profile!' : analysis.ats_score > 70 ? 'Strong Candidate' : 'Growth Potential'}
+                                                </h3>
+                                                <p className="text-gray-500 font-medium leading-relaxed">
+                                                    Your resume has been benchmarked against top-tier industry standards. {analysis.industry_fit?.verdict}
+                                                </p>
+                                                <div className="flex items-center gap-4 justify-center md:justify-start">
+                                                    <div className="flex -space-x-3">
+                                                        {[1, 2, 3].map(i => (
+                                                            <div key={i} className="w-10 h-10 rounded-xl bg-purple-50 border-4 border-white flex items-center justify-center">
+                                                                <Award className="w-4 h-4 text-[#5c52d2]" />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-gray-400 font-bold text-xs uppercase tracking-widest">Benchmarked against Fortune 500 standards</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </Card>
 
-                                    {/* Experience Summary Card */}
-                                    <Card className="border-none shadow-sm bg-white p-10 rounded-[3rem] space-y-8">
-                                        <div className="flex items-center gap-3 text-blue-500">
-                                            <Briefcase className="w-6 h-6" />
-                                            <h3 className="text-xl font-black tracking-tight">Experience Summary</h3>
+                                    {/* Industry Fit Card */}
+                                    <Card className="border-none shadow-sm bg-gradient-to-br from-[#5c52d2] to-[#7c3aed] p-10 rounded-[3.5rem] text-white space-y-8 relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 p-6 opacity-20">
+                                            <Layers className="w-24 h-24" />
                                         </div>
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Industry Alignment</p>
+                                            <h3 className="text-2xl font-black">Top Industries</h3>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {analysis.industry_fit?.top_industries?.map((industry: string, i: number) => (
+                                                <div key={i} className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 flex items-center justify-between">
+                                                    <span className="font-bold">{industry}</span>
+                                                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="pt-4 border-t border-white/10 text-center">
+                                            <span className="text-4xl font-black">{analysis.industry_fit?.score}%</span>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-white/60 mt-2">Overall Fit Score</p>
+                                        </div>
+                                    </Card>
+                                </div>
+
+                                {/* Skills & Keywords Analysis */}
+                                <div className="grid md:grid-cols-2 gap-8">
+                                    <Card className="border-none shadow-sm bg-white p-12 rounded-[3.5rem] space-y-10">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-500">
+                                                <Cpu className="w-7 h-7" />
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Keyword Mapping</h3>
+                                                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Detected Technical Expertise</p>
+                                            </div>
+                                        </div>
+
                                         <div className="space-y-8">
-                                            <div className="space-y-2">
-                                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Total Experience</p>
-                                                <p className="font-black text-gray-900 text-2xl">{formData.experience.length} position(s)</p>
-                                            </div>
-                                            <div className="space-y-4">
-                                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Positions Found</p>
-                                                <ul className="space-y-3">
-                                                    {formData.experience.map((exp: any, i: number) => (
-                                                        <li key={i} className="flex items-center gap-3 text-gray-600 font-bold text-sm">
-                                                            <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                                                            {exp.role || 'Time Management, Adaptability, Active Listening, Leadership, Logical Thinking'}
-                                                        </li>
+                                            <div>
+                                                <Label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Matched Skills</Label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {analysis.keyword_analysis?.matched?.map((skill: string, i: number) => (
+                                                        <span key={i} className="px-4 py-2 bg-green-50 text-green-600 rounded-xl font-bold text-xs border border-green-100/50">
+                                                            {skill}
+                                                        </span>
                                                     ))}
-                                                </ul>
+                                                </div>
                                             </div>
+
+                                            {analysis.keyword_analysis?.missing?.length > 0 && (
+                                                <div>
+                                                    <Label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Critical Gaps</Label>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {analysis.keyword_analysis?.missing?.map((skill: string, i: number) => (
+                                                            <span key={i} className="px-4 py-2 bg-orange-50 text-orange-400 rounded-xl font-bold text-xs border border-orange-100/50">
+                                                                {skill}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Card>
+
+                                    <Card className="border-none shadow-sm bg-white p-12 rounded-[3.5rem] space-y-10">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center text-green-500">
+                                                <Award className="w-7 h-7" />
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Profile Strengths</h3>
+                                                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Competitive Advantages</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            {analysis.strengths?.map((strength: string, i: number) => (
+                                                <div key={i} className="flex gap-4 group">
+                                                    <div className="w-6 h-6 rounded-full bg-green-50 flex items-center justify-center text-green-600 flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                                                        <CheckCircle2 className="w-4 h-4" />
+                                                    </div>
+                                                    <p className="font-bold text-gray-600 leading-relaxed text-sm">{strength}</p>
+                                                </div>
+                                            ))}
                                         </div>
                                     </Card>
                                 </div>
 
-                                {/* Identified Skills Card */}
-                                <Card className="border-none shadow-sm bg-white p-10 rounded-[3rem] space-y-8">
-                                    <div className="flex items-center gap-3 text-blue-400">
-                                        <Laptop className="w-6 h-6" />
-                                        <h3 className="text-xl font-black tracking-tight">Identified Skills</h3>
+                                {/* Improvement Plan */}
+                                <Card className="border-none shadow-sm bg-[#fafafa] p-12 rounded-[3.5rem] relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-8 text-gray-200">
+                                        <Lightbulb className="w-32 h-32" />
                                     </div>
-                                    <div className="flex flex-wrap gap-3">
-                                        {formData.skills.split(',').map((skill: string, i: number) => (
-                                            <span key={i} className="px-6 py-3 bg-blue-50 text-blue-600 rounded-full font-bold text-sm border border-blue-100/50 hover:scale-105 transition-all cursor-default">
-                                                {skill.trim().toLowerCase()}
-                                            </span>
-                                        ))}
+                                    <div className="relative z-10 space-y-10">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500">
+                                                <Target className="w-7 h-7" />
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Optimization Roadmap</h3>
+                                                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Actionable Improvement Steps</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid md:grid-cols-2 gap-12">
+                                            <div className="space-y-6">
+                                                <Label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Core Weaknesses</Label>
+                                                {analysis.weaknesses?.map((weakness: string, i: number) => (
+                                                    <div key={i} className="flex gap-4">
+                                                        <div className="w-6 h-6 rounded-full bg-red-50 flex items-center justify-center text-red-400 flex-shrink-0 mt-0.5">
+                                                            <div className="w-1.5 h-1.5 bg-red-400 rounded-full" />
+                                                        </div>
+                                                        <p className="font-bold text-gray-500 text-sm">{weakness}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="space-y-6">
+                                                <Label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Action Items</Label>
+                                                {analysis.improvement_plan?.map((step: string, i: number) => (
+                                                    <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-4 hover:shadow-md transition-shadow">
+                                                        <div className="w-8 h-8 rounded-xl bg-[#5c52d2] flex items-center justify-center text-white font-black text-xs">
+                                                            {i + 1}
+                                                        </div>
+                                                        <p className="font-black text-gray-700 text-sm leading-snug">{step}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 </Card>
-
-                                {/* Strengths & Recommendations Row */}
-                                <div className="grid md:grid-cols-2 gap-8">
-                                    {/* Key Strengths Card */}
-                                    <Card className="border-none shadow-sm bg-white p-10 rounded-[3rem] space-y-8">
-                                        <div className="flex items-center gap-3 text-green-500">
-                                            <CheckCircle2 className="w-6 h-6" />
-                                            <h3 className="text-xl font-black tracking-tight">Key Strengths</h3>
-                                        </div>
-                                        <ul className="space-y-4">
-                                            {analysis.strengths?.map((strength: string, i: number) => (
-                                                <li key={i} className="flex items-start gap-3 group">
-                                                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2 group-hover:scale-125 transition-transform" />
-                                                    <span className="font-bold text-gray-600 leading-relaxed">{strength}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </Card>
-
-                                    {/* Recommendations Card */}
-                                    <Card className="border-none shadow-sm bg-white p-10 rounded-[3rem] space-y-8">
-                                        <div className="flex items-center gap-3 text-orange-400">
-                                            <div className="w-6 h-6 rounded-full border-2 border-orange-400 flex items-center justify-center font-black text-[10px]">!</div>
-                                            <h3 className="text-xl font-black tracking-tight">Recommendations</h3>
-                                        </div>
-                                        <ul className="space-y-4">
-                                            {analysis.weaknesses?.map((rec: string, i: number) => (
-                                                <li key={i} className="flex items-start gap-3 group">
-                                                    <div className="w-2 h-2 bg-orange-400 rounded-full mt-2 group-hover:scale-125 transition-transform" />
-                                                    <span className="font-bold text-gray-600 leading-relaxed">{rec}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </Card>
-                                </div>
 
                                 {/* Footer Action */}
-                                <div className="flex justify-center pt-8">
-                                    <Button
-                                        onClick={() => window.location.href = '/career'}
-                                        style={{ background: 'linear-gradient(135deg, #5c52d2 0%, #7c3aed 100%)' }}
-                                        className="h-16 px-12 rounded-2xl font-black text-white text-lg gap-4 shadow-2xl shadow-purple-200 group hover:scale-[1.02] transition-all"
-                                    >
-                                        Continue to Domain Selection <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                                    </Button>
+                                <div className="flex flex-col items-center gap-8 pt-10">
+                                    <div className="flex flex-wrap justify-center gap-6">
+                                        <Button
+                                            onClick={() => setStep('builder')}
+                                            variant="outline"
+                                            className="h-16 px-12 rounded-2xl font-black border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-white text-lg"
+                                        >
+                                            Optimize Details
+                                        </Button>
+                                        <Button
+                                            onClick={() => window.location.href = '/career'}
+                                            style={{ background: 'linear-gradient(135deg, #5c52d2 0%, #7c3aed 100%)' }}
+                                            className="h-16 px-12 rounded-2xl font-black text-white text-lg gap-4 shadow-2xl shadow-purple-200 group hover:scale-[1.02] transition-all"
+                                        >
+                                            Continue to Career Paths <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                                        </Button>
+                                    </div>
+                                    <p className="text-gray-400 font-bold text-sm">Pro Tip: Complete the optimization steps above to boost your score by up to 25%</p>
                                 </div>
                             </motion.div>
                         )}
