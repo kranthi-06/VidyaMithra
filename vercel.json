@@ -19,8 +19,12 @@
             "destination": "api/index.py"
         },
         {
-            "source": "/(.*)",
-            "destination": "frontend/$1"
+            "source": "/assets/(.*)",
+            "destination": "/frontend/assets/$1"
+        },
+        {
+            "source": "/((?!api/v1|assets/).*)",
+            "destination": "/frontend/index.html"
         }
     ],
     "env": {
