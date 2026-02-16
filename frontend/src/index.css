@@ -84,12 +84,17 @@
 
   .animated-gradient {
     background: linear-gradient(45deg, #667eea, #764ba2, #f093fb, #4facfe);
-    background-size: 300% 300%;
-    animation: gradientShift 15s ease infinite;
+    background-size: 200% 200%;
+    animation: gradientShift 12s ease infinite;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    will-change: background-position;
+    transform: translateZ(0);
   }
 
   .animate-float {
     animation: float 6s ease-in-out infinite;
+    will-change: transform;
   }
 
   .animate-float-delayed {

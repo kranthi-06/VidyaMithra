@@ -71,9 +71,9 @@ export const PremiumBackground = () => {
                         number: {
                             density: {
                                 enable: true,
-                                area: 800,
+                                area: 1200,
                             },
-                            value: 80,
+                            value: window.innerWidth < 768 ? 40 : 80,
                         },
                         opacity: {
                             value: 0.3,
