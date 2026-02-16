@@ -1,5 +1,5 @@
 fastapi
-uvicorn[standard]
+uvicorn
 sqlalchemy
 pydantic
 pydantic-settings
@@ -10,7 +10,6 @@ supabase
 openai
 httpx
 python-dotenv
-pytest
 pypdf
 psycopg2-binary
 email-validator

@@ -1,0 +1,31 @@
+# Ignore local environments
+venv/
+.venv/
+node_modules/
+frontend/node_modules/
+backend/venv/
+backend/.venv/
+
+# Ignore local databases and logs
+*.db
+backend_error.log
+*.log
+
+# Ignore local IDE settings
+.vscode/
+.idea/
+
+# Ignore build artifacts that we don't need Vercel to see twice
+frontend/dist/
+dist/
+
+# Ignore specific large scripts if they aren't part of the app
+check_users.py
+debug_db.py
+find_region.py
+scan_*.py
+inspect_schema.py
+test_*.py
+*.bat
+docker-compose.yml
+Dockerfile
