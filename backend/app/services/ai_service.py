@@ -33,26 +33,7 @@ class AIService:
         Attempts to get a completion from OpenAI, fails over to Gemini, 
         and finally fails over to a high-quality Mock Intelligence if no keys are available.
         """
-        # 1. Try OpenAI
-        if self.openai_client:
-            try:
-                full_messages = messages
-                if system_prompt:
-                    full_messages = [{"role": "system", "content": system_prompt}] + messages
-                
-                response = await self.openai_client.chat.completions.create(
-                    model="gpt-4o-mini", # Using modern, cheaper, and more available model
-                    messages=full_messages,
-                    temperature=0.7,
-                    timeout=15.0
-                )
-                return response.choices[0].message.content
-            except Exception as e:
-                logger.error(f"OpenAI error: {str(e)}")
-                if "quota" in str(e).lower() or "429" in str(e):
-                    logger.info("Failing over to Gemini due to OpenAI quota...")
-
-        # 2. Try Gemini (Failover)
+        # 1. Try Gemini (Primary)
         if self.gemini_configured:
             try:
                 gemini_prompt = ""
@@ -65,13 +46,29 @@ class AIService:
                 
                 gemini_prompt += "Assistant: "
                 
-                # Gemini generate_content is synchronous in some versions, or needs to be awaited
-                # Using a thread pool for safety if it blocks
                 loop = asyncio.get_event_loop()
                 response = await loop.run_in_executor(None, lambda: self.gemini_model.generate_content(gemini_prompt))
                 return response.text
             except Exception as ge:
                 logger.error(f"Gemini error: {str(ge)}")
+                logger.info("Failing over to OpenAI...")
+
+        # 2. Try OpenAI (Failover)
+        if self.openai_client:
+            try:
+                full_messages = messages
+                if system_prompt:
+                    full_messages = [{"role": "system", "content": system_prompt}] + messages
+                
+                response = await self.openai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=full_messages,
+                    temperature=0.7,
+                    timeout=15.0
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                logger.error(f"OpenAI error: {str(e)}")
 
         # 3. Final Failover: Premium Mock Intelligence
         # This ensures the user experience remains "premium" and functional even without keys
