@@ -109,13 +109,24 @@ class AIService:
             return random.choice(questions)
 
         # Mock Logic for JSON Evaluations (Resume/Interview Analysis)
-        if "json" in last_msg or "format" in last_msg:
-            # Check if it's an interview analysis
-            if "performance" in last_msg or "responses" in last_msg:
+        if "json" in last_msg or "format" in last_msg or "analyze" in last_msg:
+            # Check if it's an interview analysis or performance evaluation
+            is_interview = "performance" in last_msg or "responses" in last_msg or "interview" in (system_prompt or "").lower()
+            is_resume = "resume" in last_msg or "career" in (system_prompt or "").lower() or not is_interview
+
+            if is_interview and not is_resume:
                 return json.dumps({
-                    "technical_score": "85%",
-                    "soft_skills_score": "92%",
-                    "verdict": "Strong Fit",
+                    "ats_score": 85,
+                    "keyword_analysis": {
+                        "matched": ["Communication", "Architectural Patterns", "Problem Solving"],
+                        "missing": ["Specific Metrics"],
+                        "extra": ["Cultural Fit"]
+                    },
+                    "industry_fit": {
+                        "score": 90,
+                        "verdict": "Overall, a very impressive performance. You demonstrated deep technical knowledge and a strong cultural fit.",
+                        "top_industries": ["Technology", "Engineering"]
+                    },
                     "strengths": [
                         "Excellence in architectural pattern recognition",
                         "Highly articulate communication of complex concepts",
@@ -125,7 +136,10 @@ class AIService:
                         "Could provide more specific metrics in experience descriptions",
                         "Occasional over-reliance on standard library examples"
                     ],
-                    "feedback": "Overall, a very impressive performance. You demonstrated deep technical knowledge and a strong cultural fit for a senior engineering team."
+                    "improvement_plan": [
+                        "Prepare more data-driven examples of project success",
+                        "Practice explaining complex tradeoffs in shorter 'elevator pitch' formats"
+                    ]
                 })
             
             # Default Resume Analysis Mock
