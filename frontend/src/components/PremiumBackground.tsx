@@ -89,12 +89,12 @@ export const PremiumBackground = () => {
                 }}
             />
             {/* Animated Floating Orbs & Shapes */}
-            <div className="absolute top-[10%] left-[10%] w-32 h-32 bg-white/10 rounded-full blur-2xl animate-float pointer-events-none"></div>
-            <div className="absolute top-[60%] right-[15%] w-40 h-40 bg-white/10 rounded-2xl rotate-45 blur-2xl animate-float-delayed pointer-events-none"></div>
-            <div className="absolute bottom-[10%] left-[20%] w-24 h-24 bg-white/10 blur-2xl animate-float-slow pointer-events-none" style={{ clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)' }}></div>
+            <div className="absolute top-[10%] left-[10%] w-32 h-32 bg-white/10 rounded-full blur-2xl animate-float pointer-events-none hidden md:block"></div>
+            <div className="absolute top-[60%] right-[15%] w-40 h-40 bg-white/10 rounded-2xl rotate-45 blur-2xl animate-float-delayed pointer-events-none hidden md:block"></div>
+            <div className="absolute bottom-[10%] left-[20%] w-24 h-24 bg-white/10 blur-2xl animate-float-slow pointer-events-none hidden md:block" style={{ clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)' }}></div>
 
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] -mr-64 -mt-64 animate-pulse"></div>
-            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] -ml-64 -mb-64 animate-pulse" style={{ animationDelay: '2s' }}></div>
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] -mr-64 -mt-64 animate-pulse hidden md:block"></div>
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] -ml-64 -mb-64 animate-pulse hidden md:block" style={{ animationDelay: '2s' }}></div>
         </div>
     );
 };

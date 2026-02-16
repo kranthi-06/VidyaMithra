@@ -192,7 +192,7 @@ export default function Landing() {
 
                 {/* Floating Particles */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    {[...Array(20)].map((_, i) => (
+                    {[...Array(window.innerWidth < 768 ? 5 : 20)].map((_, i) => (
                         <motion.div
                             key={i}
                             className="absolute rounded-full bg-white/10 blur-xl"
