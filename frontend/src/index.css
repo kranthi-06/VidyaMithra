@@ -109,6 +109,16 @@
     @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-xl;
   }
 
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .typing-animation {
     overflow: hidden;
     border-right: 3px solid;

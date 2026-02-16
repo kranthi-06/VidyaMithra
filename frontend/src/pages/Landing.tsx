@@ -142,27 +142,27 @@ export default function Landing() {
             </AnimatePresence>
 
             {/* Navigation */}
-            <nav className={`fixed w-full top-0 z-50 transition-all duration-500 px-4 sm:px-8 py-4 ${scrolled ? 'bg-white/80 backdrop-blur-xl shadow-lg py-3 border-b border-gray-100' : 'bg-transparent'}`}>
-                <div className="max-w-7xl mx-auto flex justify-between items-center">
-                    <div className="flex items-center space-x-3 group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+            <nav className={`fixed w-full top-0 z-50 transition-all duration-500 py-4 ${scrolled ? 'bg-white/80 backdrop-blur-xl shadow-lg py-3 border-b border-gray-100' : 'bg-transparent'}`}>
+                <div className="max-w-7xl mx-auto flex items-center px-4 sm:px-8 gap-6 overflow-x-auto no-scrollbar whitespace-nowrap">
+                    <div className="flex items-center space-x-3 group cursor-pointer shrink-0" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
                         <motion.div
                             whileHover={{ rotate: 12, scale: 1.1 }}
-                            className="w-12 h-12 bg-white text-[#5c52d2] rounded-2xl flex items-center justify-center shadow-lg border border-white/20 relative overflow-hidden"
+                            className="w-10 h-10 sm:w-12 sm:h-12 bg-white text-[#5c52d2] rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg border border-white/20 relative overflow-hidden"
                         >
                             <div className="absolute inset-0 bg-gradient-to-tr from-purple-100 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <GraduationCap className="w-7 h-7 relative z-10" />
+                            <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 relative z-10" />
                         </motion.div>
-                        <span className={`text-2xl font-black tracking-tighter ${scrolled ? "text-gray-900" : "text-white"}`}>
+                        <span className={`text-xl sm:text-2xl font-black tracking-tighter ${scrolled ? "text-gray-900" : "text-white"}`}>
                             Vidya<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">Mitra</span>
                         </span>
                     </div>
 
-                    <div className="hidden md:flex items-center space-x-10">
+                    <div className="flex items-center space-x-6 sm:space-x-10">
                         {['Home', 'Features', 'Demo'].map((item) => (
                             <a
                                 key={item}
                                 href={`#${item.toLowerCase()}`}
-                                className={`font-bold text-sm uppercase tracking-widest transition-all hover:scale-105 relative group ${scrolled ? 'text-gray-600 hover:text-purple-600' : 'text-white/80 hover:text-white'}`}
+                                className={`font-bold text-[10px] sm:text-sm uppercase tracking-widest transition-all hover:scale-105 relative group ${scrolled ? 'text-gray-600 hover:text-purple-600' : 'text-white/80 hover:text-white'}`}
                             >
                                 {item}
                                 <span className={`absolute -bottom-1 left-0 w-0 h-0.5 transition-all group-hover:w-full ${scrolled ? 'bg-purple-600' : 'bg-white'}`}></span>
@@ -170,14 +170,14 @@ export default function Landing() {
                         ))}
                     </div>
 
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-3 sm:space-x-4 shrink-0">
                         <Link to="/login">
-                            <Button variant="ghost" className={`font-bold hover:bg-white/10 ${scrolled ? 'text-gray-600 hover:text-purple-600 hover:bg-purple-50' : 'text-white'}`}>
+                            <Button variant="ghost" className={`font-bold text-xs sm:text-sm hover:bg-white/10 h-9 sm:h-10 ${scrolled ? 'text-gray-600 hover:text-purple-600 hover:bg-purple-50' : 'text-white'}`}>
                                 Sign In
                             </Button>
                         </Link>
                         <Link to="/register">
-                            <Button className={`font-black rounded-xl transition-all h-11 px-8 shadow-xl hover:shadow-2xl hover:-translate-y-1 ${scrolled ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white' : 'bg-white text-purple-900 hover:bg-yellow-300'
+                            <Button className={`font-black rounded-lg sm:rounded-xl transition-all h-9 sm:h-11 px-4 sm:px-8 text-xs sm:text-sm shadow-xl hover:shadow-2xl hover:-translate-y-1 ${scrolled ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white' : 'bg-white text-purple-900 hover:bg-yellow-300'
                                 }`}>
                                 Get Started
                             </Button>
