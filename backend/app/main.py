@@ -32,9 +32,9 @@ import logging
 import traceback
 import sys
 
-# Configure logging to file
+# Configure logging
 logging.basicConfig(
-    filename='backend_error.log', 
+    stream=sys.stdout, 
     level=logging.ERROR,
     format='%(asctime)s %(levelname)s %(message)s'
 )

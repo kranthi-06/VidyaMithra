@@ -30,7 +30,7 @@ export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const { login } = useAuth();
+    const { login, signInWithGoogle } = useAuth();
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
@@ -210,6 +210,33 @@ export default function Login() {
                             >
                                 {isLoading ? "Signing In..." : "Sign In"}
                             </Button>
+
+                            <div className="relative my-8">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t border-slate-200"></span>
+                                </div>
+                                <div className="relative flex justify-center text-sm uppercase">
+                                    <span className="bg-white px-4 text-slate-500 font-medium">Or continue with</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4">
+                                <Button
+                                    type="button"
+                                    onClick={async () => {
+                                        try {
+                                            await signInWithGoogle();
+                                        } catch (err) {
+                                            showToast('Google sign-in failed', 'error');
+                                        }
+                                    }}
+                                    variant="outline"
+                                    className="w-full py-6 rounded-xl border-2 border-slate-100 hover:bg-slate-50 hover:border-slate-200 transition-all flex items-center justify-center gap-3 text-slate-700 font-bold text-lg"
+                                >
+                                    <GoogleIcon />
+                                    <span>Sign in with Google</span>
+                                </Button>
+                            </div>
 
                             <Button
                                 type="button"

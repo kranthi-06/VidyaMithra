@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { login as loginApi, register as registerApi, getMe } from '../services/auth';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 interface User {
     email: string;
@@ -13,6 +14,7 @@ interface AuthContextType {
     loading: boolean;
     login: (data: any) => Promise<void>;
     register: (data: any) => Promise<void>;
+    signInWithGoogle: () => Promise<void>;
     logout: () => void;
 }
 
@@ -34,9 +36,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     localStorage.removeItem('token');
                 }
             }
+            // Check for Supabase session if redirected from OAuth
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                // If we have a Supabase session, we should handle exchanging it for a backend token
+                // For now, let's keep it simple and at least set the user if we don't have one
+                if (!user && session.user) {
+                    setUser({
+                        email: session.user.email || '',
+                        full_name: session.user.user_metadata?.full_name,
+                        is_active: true
+                    });
+                }
+            }
             setLoading(false);
         };
         initAuth();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            if (session) {
+                setUser({
+                    email: session.user.email || '',
+                    full_name: session.user.user_metadata?.full_name,
+                    is_active: true
+                });
+            } else {
+                setUser(null);
+            }
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     const login = async (data: any) => {
@@ -52,14 +81,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await login({ email: data.email, password: data.password });
     };
 
-    const logout = () => {
+    const signInWithGoogle = async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: import.meta.env.VITE_AUTH_CALLBACK_URL || window.location.origin,
+            },
+        });
+        if (error) throw error;
+    };
+
+    const logout = async () => {
+        await supabase.auth.signOut();
         localStorage.removeItem('token');
         setUser(null);
         navigate('/login');
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, register, signInWithGoogle, logout }}>
             {children}
         </AuthContext.Provider>
     );
