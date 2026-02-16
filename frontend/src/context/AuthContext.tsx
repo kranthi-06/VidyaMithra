@@ -60,6 +60,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     full_name: session.user.user_metadata?.full_name,
                     is_active: true
                 });
+                // If on login or register, go to dashboard
+                if (window.location.pathname === '/login' || window.location.pathname === '/register' || window.location.pathname === '/') {
+                    navigate('/dashboard');
+                }
             } else {
                 setUser(null);
             }

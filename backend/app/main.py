@@ -10,16 +10,17 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS Configuration
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-]
+from app.db.session import engine
+from app.db.base_class import Base
+from app.models.user import User # Import to ensure registered
 
+# Create tables on startup
+Base.metadata.create_all(bind=engine)
+
+# CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

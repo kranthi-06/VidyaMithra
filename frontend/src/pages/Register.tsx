@@ -85,11 +85,12 @@ export default function Register() {
                 if (typeof detail === 'string') {
                     errorMsg = detail;
                 } else if (Array.isArray(detail)) {
-                    // Start of validation error handling
                     errorMsg = detail.map((e: any) => e.msg).join(', ');
-                } else if (typeof detail === 'object') {
+                } else {
                     errorMsg = JSON.stringify(detail);
                 }
+            } else if (err.message) {
+                errorMsg = err.message;
             }
 
             setError(errorMsg);
