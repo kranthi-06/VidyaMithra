@@ -17,7 +17,8 @@ class AIService:
     def __init__(self):
         # Initialize Groq (New Primary)
         self.groq_client = None
-        groq_api_key = settings.GROQ_API_KEY or HARDCODED_KEY
+        raw_key = settings.GROQ_API_KEY or HARDCODED_KEY
+        groq_api_key = raw_key.strip() if raw_key else None
         
         if groq_api_key and len(groq_api_key) > 10:
             try:
@@ -58,28 +59,28 @@ class AIService:
                 if system_prompt:
                     full_messages = [{"role": "system", "content": system_prompt}] + messages
                 
-                logger.info(f"Attempting Groq completion with model: meta-llama/llama-4-scout-17b-16e-instruct")
+                logger.info(f"Attempting Groq completion with model: llama-3.3-70b-versatile")
                 try:
                     response = await self.groq_client.chat.completions.create(
-                        model="meta-llama/llama-4-scout-17b-16e-instruct",
+                        model="llama-3.3-70b-versatile",
                         messages=full_messages,
                         temperature=0.7,
                         max_tokens=4096
                     )
                     return response.choices[0].message.content
                 except Exception as e1:
-                    logger.warning(f"Groq primary model failed: {str(e1)}. Trying fallback model...")
+                    logger.warning(f"Groq primary model (llama-3.3-70b-versatile) failed: {str(e1)}. Trying fallback model...")
                     # Try a fallback model on Groq before moving to other providers
                     response = await self.groq_client.chat.completions.create(
-                        model="groq/compound-mini",
+                        model="llama-3.1-8b-instant",
                         messages=full_messages,
                         temperature=0.7,
                         max_tokens=4096
                     )
                     return response.choices[0].message.content
             except Exception as e:
-                logger.error(f"Groq completely failed: {str(e)}")
-                logger.info("Failing over to Gemini...")
+                logger.error(f"Groq completely failed or exhausted: {str(e)}")
+                logger.info("Failing over... Details: " + str(e))
 
         # 2. Try Gemini (Failover)
         if self.gemini_configured:
