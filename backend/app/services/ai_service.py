@@ -4,6 +4,7 @@ import asyncio
 from typing import List, Dict, Any, Optional
 from openai import AsyncOpenAI
 import google.generativeai as genai
+from groq import AsyncGroq
 from app.core.config import settings
 
 # Configure logging
@@ -12,12 +13,21 @@ logger = logging.getLogger(__name__)
 
 class AIService:
     def __init__(self):
-        # Initialize OpenAI
+        # Initialize Groq (New Primary)
+        self.groq_client = None
+        if settings.GROQ_API_KEY and len(settings.GROQ_API_KEY) > 10:
+            try:
+                self.groq_client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+                logger.info("Groq initialized as primary AI provider")
+            except Exception as e:
+                logger.error(f"Failed to configure Groq: {str(e)}")
+
+        # Initialize OpenAI (Secondary Failover)
         self.openai_client = None
         if settings.OPENAI_API_KEY and "sk-" in settings.OPENAI_API_KEY:
             self.openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         
-        # Initialize Gemini
+        # Initialize Gemini (Tertiary Failover)
         self.gemini_configured = False
         if settings.GEMINI_API_KEY and len(settings.GEMINI_API_KEY) > 10:
             try:
@@ -30,12 +40,44 @@ class AIService:
 
     async def chat_completion(self, messages: List[Dict[str, str]], system_prompt: Optional[str] = None) -> str:
         """
-        Attempts to get a completion from OpenAI, fails over to Gemini, 
-        and finally fails over to a high-quality Mock Intelligence if no keys are available.
+        Attempts to get a completion from Groq (Primary), 
+        fails over to Gemini, then OpenAI, 
+        and finally fails over to a premium Mock Intelligence.
         """
-        # 1. Try Gemini (Primary)
+        # 1. Try Groq (Primary) - Fast and Free for standard tiers
+        if self.groq_client:
+            try:
+                full_messages = messages
+                if system_prompt:
+                    full_messages = [{"role": "system", "content": system_prompt}] + messages
+                
+                logger.info(f"Attempting Groq completion with model: llama-3.3-70b-versatile")
+                try:
+                    response = await self.groq_client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=full_messages,
+                        temperature=0.7,
+                        max_tokens=4096
+                    )
+                    return response.choices[0].message.content
+                except Exception as e1:
+                    logger.warning(f"Groq primary model failed: {str(e1)}. Trying fallback model...")
+                    # Try a fallback model on Groq before moving to other providers
+                    response = await self.groq_client.chat.completions.create(
+                        model="mixtral-8x7b-32768",
+                        messages=full_messages,
+                        temperature=0.7,
+                        max_tokens=4096
+                    )
+                    return response.choices[0].message.content
+            except Exception as e:
+                logger.error(f"Groq completely failed: {str(e)}")
+                logger.info("Failing over to Gemini...")
+
+        # 2. Try Gemini (Failover)
         if self.gemini_configured:
             try:
+                logger.info("Attempting Gemini completion...")
                 gemini_prompt = ""
                 if system_prompt:
                     gemini_prompt += f"System Instructions: {system_prompt}\n\n"
@@ -53,9 +95,10 @@ class AIService:
                 logger.error(f"Gemini error: {str(ge)}")
                 logger.info("Failing over to OpenAI...")
 
-        # 2. Try OpenAI (Failover)
+        # 3. Try OpenAI (Failover)
         if self.openai_client:
             try:
+                logger.info("Attempting OpenAI completion...")
                 full_messages = messages
                 if system_prompt:
                     full_messages = [{"role": "system", "content": system_prompt}] + messages
@@ -70,9 +113,8 @@ class AIService:
             except Exception as e:
                 logger.error(f"OpenAI error: {str(e)}")
 
-        # 3. Final Failover: Premium Mock Intelligence
-        # This ensures the user experience remains "premium" and functional even without keys
-        logger.warning("No AI keys found or providers failed. Using Mock Intelligence fallback.")
+        # 4. Final Failover: Premium Mock Intelligence
+        logger.warning("All AI providers (Groq/Gemini/OpenAI) failed or no keys found. Using Mock Intelligence fallback.")
         return await self._generate_mock_response(messages, system_prompt)
 
     async def _generate_mock_response(self, messages: List[Dict[str, str]], system_prompt: Optional[str]) -> str:
@@ -148,17 +190,17 @@ class AIService:
                 "ats_score": 0,
                 "keyword_analysis": {
                     "matched": ["API Connection Required"],
-                    "missing": ["Please check your OpenAI/Gemini keys in backend/.env"],
+                    "missing": ["Please check your Groq/OpenAI/Gemini keys in backend/.env"],
                     "extra": []
                 },
                 "industry_fit": {
                     "score": 0,
-                    "verdict": "Real-time analysis is unavailable because the AI service could not authenticate (Quota exceeded or invalid key).",
+                    "verdict": "Real-time analysis is unavailable because all AI services (Groq, Gemini, OpenAI) could not authenticate or are offline.",
                     "top_industries": ["Fix Required"]
                 },
-                "strengths": ["System is connected but AI is offline"],
-                "weaknesses": ["Check billing on OpenAI dashboard", "Add GEMINI_API_KEY as fallback"],
-                "improvement_plan": ["Add a valid API key to backend/.env", "Restart the backend server", "Verify network connectivity"]
+                "strengths": ["System is connected but all AI providers are offline"],
+                "weaknesses": ["Check Groq API console for current status", "Verify GROQ_API_KEY is correctly set in .env"],
+                "improvement_plan": ["Add a valid Groq API key to backend/.env", "Restart the backend server", "Check backend logs for specific error messages"]
             })
 
         return "That's an excellent point. Could you elaborate more on your specific implementation strategy for that module?"

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     # External APIs
     OPENAI_API_KEY: str
     GEMINI_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
     
     class Config:
         env_file = ".env"
