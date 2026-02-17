@@ -94,15 +94,23 @@ async def analyze_resume_with_ai(resume_text: str, job_description: str = ""):
         return json.loads(clean_response)
     except Exception as e:
         logger.error(f"JSON Parsing failed: {str(e)}")
-        logger.error(f"Failed content snippet: {clean_response[:200]}...")
-        logger.error(f"JSON Parsing failed: {str(e)}")
-        logger.error(f"Failed string: {json_str[:500]}...")
-        # Fallback if AI output is not valid JSON
+        safe_snippet = str(clean_response)[:200].replace('"', "'").replace('\n', ' ')
+        
+        # Return a valid JSON structure with the ERROR details embedded
+        # This forces the frontend to display the error text instead of a generic "Good job" message
         return {
-            "ats_score": 70,
-            "keyword_analysis": {"matched": ["Extracting..."], "missing": [], "extra": []},
-            "industry_fit": {"score": 75, "verdict": "Good potential with some gaps.", "top_industries": ["Technology"]},
-            "strengths": ["Clear structure"],
-            "weaknesses": ["Needs more metrics"],
-            "improvement_plan": ["Add quantifiable achievements"]
+            "ats_score": 0,
+            "keyword_analysis": {
+                "matched": ["PARSING ERROR"],
+                "missing": [f"Error: {str(e)}"],
+                "extra": []
+            },
+            "industry_fit": {
+                "score": 0,
+                "verdict": f"RAW AI RESPONSE: {safe_snippet}...",
+                "top_industries": ["System Diagnosis"]
+            },
+            "strengths": ["System is online", "Error captured"],
+            "weaknesses": ["Response was not valid JSON", "See verdict for details"],
+            "improvement_plan": ["Report this error", "Retry analysis"]
         }
