@@ -162,9 +162,7 @@ class AIService:
             import random
             return random.choice(questions)
 
-        # Debugging why mock logic might be skipped
-        keys_found = [k for k in ["json", "format", "analyze"] if k in last_msg]
-        logger.info(f"Mock Decision - Last Msg Len: {len(last_msg)} | Keys Found: {keys_found} | System Prompt: {system_prompt}")
+        print(f"DEBUG: Entering Mock Logic. Keys found: {keys_found}")
 
         # Mock Logic for JSON Evaluations (Resume/Interview Analysis)
         if "json" in last_msg or "format" in last_msg or "analyze" in last_msg:
@@ -200,22 +198,27 @@ class AIService:
                      ]
                  })
              
-             # Default Resume Analysis Mock (now labeled as demo data to avoid confusion)
+             # Failure Report Mock - surfacing the LAST error caught
+             last_error = "Unknown Error"
+             # Use a global or passed error if possible, but for now generic
+             # Actually, we can't easily pass the error here without refactoring.
+             # So we will just say "Check server logs" or look at the earlier logs.
+             
              return json.dumps({
                  "ats_score": 0,
                  "keyword_analysis": {
-                     "matched": ["System Processing..."],
-                     "missing": ["Please wait a moment and try again."],
+                     "matched": ["SYSTEM ERROR"],
+                     "missing": ["See 'Industry Alignment' for details"],
                      "extra": []
                  },
                  "industry_fit": {
                      "score": 0,
-                     "verdict": "The AI engine is currently experiencing high demand. We are attempting to reconnect.",
-                     "top_industries": ["AI Engineering"]
+                     "verdict": f"GROQ API FAILURE. Please verify: 1. API Key validity. 2. Internet connection. 3. Firewall settings.",
+                     "top_industries": ["Debug Mode"]
                  },
-                 "strengths": ["System is online", "Retry logic active"],
-                 "weaknesses": ["Temporary connection bottleneck"],
-                 "improvement_plan": ["Refresh the page", "Check network connection"]
+                 "strengths": ["Error reporting active"],
+                 "weaknesses": ["AI Service Unavailable"],
+                 "improvement_plan": ["Check logs", "Retry"]
              })
 
         return "SYSTEM_MOCK_FALLBACK: The system could not understand the request context (Resume/Interview)."
