@@ -16,6 +16,8 @@ HARDCODED_KEY = "gsk_ZG1EDy" + "NY91actH6jYm7UWGdyb3FYcmIVv3jn9hiYlxjesGbjtIHF"
 class AIService:
     def __init__(self):
         # Initialize Groq (New Primary)
+        self.mock_client = True
+        self.last_error = None  # To store the last exception for debugging in UI
         self.groq_client = None
         raw_key = settings.GROQ_API_KEY or HARDCODED_KEY
         groq_api_key = raw_key.strip() if raw_key else None
@@ -77,8 +79,14 @@ class AIService:
                 return response.choices[0].message.content
 
             except Exception as e:
-                # WRITE ERROR TO FILE
-                import traceback
+                # Capture Error for UI Debugging
+                self.last_error = f"{type(e).__name__}: {str(e)}"
+                
+                # Force print to stderr
+                import sys
+                print(f"CRITICAL GROQ FAIL: {self.last_error}", file=sys.stderr)
+                
+                # Log to dedicated file
                 error_details = f"Exception: {str(e)}\nTraceback: {traceback.format_exc()}"
                 try:
                     with open("last_error.txt", "w") as f:
@@ -221,7 +229,7 @@ class AIService:
                  },
                  "industry_fit": {
                      "score": 0,
-                     "verdict": f"GROQ API FAILURE. Please verify: 1. API Key validity. 2. Internet connection. 3. Firewall settings.",
+                     "verdict": f"GROQ API FAILURE. ERROR: {self.last_error or 'Unknown'}. Please verify: 1. API Key validity. 2. Internet connection. 3. Firewall settings.",
                      "top_industries": ["Debug Mode"]
                  },
                  "strengths": ["Error reporting active"],
