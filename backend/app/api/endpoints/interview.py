@@ -19,7 +19,7 @@ class FinishRequest(BaseModel):
 @router.post("/next-question")
 async def get_next_question(
     request: QuestionRequest,
-    current_user = Depends(deps.get_current_active_user),
+    current_user = Depends(deps.get_current_user_optional),
 ) -> Any:
     """
     Generate the next interview question.
@@ -32,7 +32,7 @@ async def get_next_question(
 @router.post("/analyze")
 async def analyze_interview(
     request: FinishRequest,
-    current_user = Depends(deps.get_current_active_user),
+    current_user = Depends(deps.get_current_user_optional),
 ) -> Any:
     """
     Analyze the full interview performance.
