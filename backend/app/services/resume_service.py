@@ -45,6 +45,7 @@ async def analyze_resume_with_ai(resume_text: str, job_description: str = ""):
     else:
         prompt = f"""
         Analyze the following resume text and provide a comprehensive professional assessment in JSON format.
+        IMPORTANT: Return ONLY the valid JSON object. Do not use markdown keys or conversational text.
         
         Resume Text:
         {resume_text[:3000]}
@@ -76,23 +77,24 @@ async def analyze_resume_with_ai(resume_text: str, job_description: str = ""):
     # Try to extract JSON from the response
     json_str = response
     
-    # Clean up markdown blocks
-    if "```json" in response:
-        json_str = response.split("```json")[1].split("```")[0].strip()
-    elif "```" in response:
-        json_str = response.split("```")[1].split("```")[0].strip()
-    else:
-        # If no markdown, attempt to find the first '{' and last '}'
-        start = response.find("{")
-        end = response.rfind("}")
-        if start != -1 and end != -1:
-            json_str = response[start:end+1].strip()
-        
+    import re
+    # Clean up response (Markdown stripping)
+    clean_response = response.strip()
+    if "```json" in clean_response:
+        clean_response = clean_response.split("```json")[1].split("```")[0].strip()
+    elif "```" in clean_response:
+        clean_response = clean_response.split("```")[1].split("```")[0].strip()
+    
+    # Robust Regex Extraction for main JSON object
     try:
-        data = json.loads(json_str)
-        logger.info("Successfully parsed AI JSON response")
-        return data
+        json_match = re.search(r'(\{.*\})', clean_response, re.DOTALL)
+        if json_match:
+            clean_response = json_match.group(1)
+        
+        return json.loads(clean_response)
     except Exception as e:
+        logger.error(f"JSON Parsing failed: {str(e)}")
+        logger.error(f"Failed content snippet: {clean_response[:200]}...")
         logger.error(f"JSON Parsing failed: {str(e)}")
         logger.error(f"Failed string: {json_str[:500]}...")
         # Fallback if AI output is not valid JSON
