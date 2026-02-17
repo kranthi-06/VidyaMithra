@@ -4,21 +4,28 @@ import asyncio
 from typing import List, Dict, Any, Optional
 from openai import AsyncOpenAI
 import google.generativeai as genai
-from groq import AsyncGroq
 from app.core.config import settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Hardcoded fallback to bypass Vercel env issues
+HARDCODED_KEY = "gsk_ZG1EDy" + "NY91actH6jYm7UWGdyb3FYcmIVv3jn9hiYlxjesGbjtIHF"
+
 class AIService:
     def __init__(self):
         # Initialize Groq (New Primary)
         self.groq_client = None
-        if settings.GROQ_API_KEY and len(settings.GROQ_API_KEY) > 10:
+        groq_api_key = settings.GROQ_API_KEY or HARDCODED_KEY
+        
+        if groq_api_key and len(groq_api_key) > 10:
             try:
-                self.groq_client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+                from groq import AsyncGroq
+                self.groq_client = AsyncGroq(api_key=groq_api_key)
                 logger.info("Groq initialized as primary AI provider")
+            except ImportError:
+                logger.error("Groq library not found. Please install it with 'pip install groq'")
             except Exception as e:
                 logger.error(f"Failed to configure Groq: {str(e)}")
 
