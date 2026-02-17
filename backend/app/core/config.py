@@ -7,7 +7,8 @@ class Settings(BaseSettings):
     # Database
     # This must be the PostgreSQL Connection String (starts with postgresql://)
     # Get this from Supabase Dashboard > Settings > Database > Connection String
-    DATABASE_URL: str = "sqlite:///./test.db"
+    # DATABASE_URL: str = "postgresql://postgres.prrbjfnmuzxbtesrtvmc:Ashok%40yeddula011003@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require"
+    DATABASE_URL: str = "sqlite:///./local.db"
     
     # API Access (for Auth/Storage if needed)
     SUPABASE_URL: str = ""
