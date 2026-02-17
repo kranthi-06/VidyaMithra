@@ -58,10 +58,10 @@ class AIService:
                 if system_prompt:
                     full_messages = [{"role": "system", "content": system_prompt}] + messages
                 
-                logger.info(f"Attempting Groq completion with model: llama-3.3-70b-versatile")
+                logger.info(f"Attempting Groq completion with model: meta-llama/llama-4-scout-17b-16e-instruct")
                 try:
                     response = await self.groq_client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
+                        model="meta-llama/llama-4-scout-17b-16e-instruct",
                         messages=full_messages,
                         temperature=0.7,
                         max_tokens=4096
@@ -71,7 +71,7 @@ class AIService:
                     logger.warning(f"Groq primary model failed: {str(e1)}. Trying fallback model...")
                     # Try a fallback model on Groq before moving to other providers
                     response = await self.groq_client.chat.completions.create(
-                        model="mixtral-8x7b-32768",
+                        model="groq/compound-mini",
                         messages=full_messages,
                         temperature=0.7,
                         max_tokens=4096
