@@ -66,17 +66,35 @@ async def analyze_resume_with_ai(resume_text: str, job_description: str = ""):
         6. "improvement_plan": [list of 3 actionable tips for general resume optimization]
         """
     
+    import logging
+    logger = logging.getLogger(__name__)
+    
     response = await ai_hub.chat_completion([{"role": "user", "content": prompt}], system_prompt)
     
-    # Clean up response if it has markdown blocks
+    logger.info(f"Raw AI Response length: {len(response)}")
+    
+    # Try to extract JSON from the response
+    json_str = response
+    
+    # Clean up markdown blocks
     if "```json" in response:
-        response = response.split("```json")[1].split("```")[0].strip()
+        json_str = response.split("```json")[1].split("```")[0].strip()
     elif "```" in response:
-        response = response.split("```")[1].split("```")[0].strip()
+        json_str = response.split("```")[1].split("```")[0].strip()
+    else:
+        # If no markdown, attempt to find the first '{' and last '}'
+        start = response.find("{")
+        end = response.rfind("}")
+        if start != -1 and end != -1:
+            json_str = response[start:end+1].strip()
         
     try:
-        return json.loads(response)
-    except:
+        data = json.loads(json_str)
+        logger.info("Successfully parsed AI JSON response")
+        return data
+    except Exception as e:
+        logger.error(f"JSON Parsing failed: {str(e)}")
+        logger.error(f"Failed string: {json_str[:500]}...")
         # Fallback if AI output is not valid JSON
         return {
             "ats_score": 70,
