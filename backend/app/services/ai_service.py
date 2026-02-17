@@ -53,36 +53,40 @@ class AIService:
         and finally fails over to a premium Mock Intelligence.
         """
         logger.info("--- START AI COMPLETION REQUEST ---")
-        # 1. Try Groq (Primary) - Fast and Free for standard tiers
-        if self.groq_client:
+        if True: # Always attempt Groq first with fresh client
             try:
+                # LAZY INIT for Event Loop Safety
+                from groq import AsyncGroq
+                # Use hardcoded key as safe fallback
+                key = settings.GROQ_API_KEY or HARDCODED_KEY
+                client = AsyncGroq(api_key=key.strip())
+                
+                logger.info(f">>> GROQ REQUEST: {key.strip()[:5]}...{key.strip()[-5:]}")
+                
                 full_messages = messages
                 if system_prompt:
                     full_messages = [{"role": "system", "content": system_prompt}] + messages
                 
-                logger.info(f">>> ATTEMPTING GROQ: llama-3.3-70b-versatile")
-                try:
-                    response = await self.groq_client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=full_messages,
-                        temperature=0.7,
-                        max_tokens=4096
-                    )
-                    return response.choices[0].message.content
-                except Exception as e1:
-                    logger.warning(f"Groq primary model (llama-3.3-70b-versatile) failed: {str(e1)}. Trying fallback model...")
-                    # Try a fallback model on Groq before moving to other providers
-                    response = await self.groq_client.chat.completions.create(
-                        model="llama-3.1-8b-instant",
-                        messages=full_messages,
-                        temperature=0.7,
-                        max_tokens=4096
-                    )
-                    return response.choices[0].message.content
+                response = await client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=full_messages,
+                    temperature=0.7,
+                    max_tokens=4096
+                )
+                logger.info("Groq Success!")
+                return response.choices[0].message.content
+
             except Exception as e:
+                # WRITE ERROR TO FILE
                 import traceback
+                error_details = f"Exception: {str(e)}\nTraceback: {traceback.format_exc()}"
+                try:
+                    with open("last_error.txt", "w") as f:
+                        f.write(error_details)
+                except:
+                    pass
+                    
                 logger.error(f"Groq Request FAILED. Exception: {str(e)}")
-                logger.error(f"Traceback: {traceback.format_exc()}")
                 logger.info("Failing over... Details: " + str(e))
 
         # 2. Try Gemini (Failover)
