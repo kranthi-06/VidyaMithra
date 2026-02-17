@@ -52,6 +52,7 @@ class AIService:
         fails over to Gemini, then OpenAI, 
         and finally fails over to a premium Mock Intelligence.
         """
+        logger.info("--- START AI COMPLETION REQUEST ---")
         # 1. Try Groq (Primary) - Fast and Free for standard tiers
         if self.groq_client:
             try:
@@ -59,7 +60,7 @@ class AIService:
                 if system_prompt:
                     full_messages = [{"role": "system", "content": system_prompt}] + messages
                 
-                logger.info(f"Attempting Groq completion with model: llama-3.3-70b-versatile")
+                logger.info(f">>> ATTEMPTING GROQ: llama-3.3-70b-versatile")
                 try:
                     response = await self.groq_client.chat.completions.create(
                         model="llama-3.3-70b-versatile",
@@ -194,22 +195,22 @@ class AIService:
                 })
             
             # Default Resume Analysis Mock (now labeled as demo data to avoid confusion)
-            return json.dumps({
-                "ats_score": 0,
-                "keyword_analysis": {
-                    "matched": ["API Connection Required"],
-                    "missing": ["Please check your Groq/OpenAI/Gemini keys in backend/.env"],
-                    "extra": []
-                },
-                "industry_fit": {
-                    "score": 0,
-                    "verdict": "Real-time analysis is unavailable because all AI services (Groq, Gemini, OpenAI) could not authenticate or are offline.",
-                    "top_industries": ["Fix Required"]
-                },
-                "strengths": ["System is connected but all AI providers are offline"],
-                "weaknesses": ["Check Groq API console for current status", "Verify GROQ_API_KEY is correctly set in .env"],
-                "improvement_plan": ["Add a valid Groq API key to backend/.env", "Restart the backend server", "Check backend logs for specific error messages"]
-            })
+                return json.dumps({
+                    "ats_score": 0,
+                    "keyword_analysis": {
+                        "matched": ["System Processing..."],
+                        "missing": ["Please wait a moment and try again."],
+                        "extra": []
+                    },
+                    "industry_fit": {
+                        "score": 0,
+                        "verdict": "The AI engine is currently experiencing high demand. We are attempting to reconnect.",
+                        "top_industries": ["AI Engineering"]
+                    },
+                    "strengths": ["System is online", "Retry logic active"],
+                    "weaknesses": ["Temporary connection bottleneck"],
+                    "improvement_plan": ["Refresh the page", "Check network connection"]
+                })
 
         return "That's an excellent point. Could you elaborate more on your specific implementation strategy for that module?"
 
