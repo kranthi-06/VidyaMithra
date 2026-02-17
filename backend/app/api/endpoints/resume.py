@@ -82,4 +82,4 @@ async def analyze_resume_text(
         raise
     except Exception as e:
         logger.error(f"Unexpected error during resume text analysis: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI Engine Error (Text): {str(e)}")
