@@ -87,6 +87,7 @@ class AIService:
                 print(f"CRITICAL GROQ FAIL: {self.last_error}", file=sys.stderr)
                 
                 # Log to dedicated file
+                import traceback
                 error_details = f"Exception: {str(e)}\nTraceback: {traceback.format_exc()}"
                 try:
                     with open("last_error.txt", "w") as f:
