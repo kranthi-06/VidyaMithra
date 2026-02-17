@@ -189,30 +189,19 @@ class AIService:
  
              if is_interview and not is_resume:
                  return json.dumps({
-                     "ats_score": 85,
-                     "keyword_analysis": {
-                         "matched": ["Communication", "Architectural Patterns", "Problem Solving"],
-                         "missing": ["Specific Metrics"],
-                         "extra": ["Cultural Fit"]
-                     },
-                     "industry_fit": {
-                         "score": 90,
-                         "verdict": "Overall, a very impressive performance. You demonstrated deep technical knowledge and a strong cultural fit.",
-                         "top_industries": ["Technology", "Engineering"]
-                     },
+                     "technical_score": "85%",
+                     "soft_skills_score": "90%",
+                     "verdict": "Strong Fit",
                      "strengths": [
-                         "Excellence in architectural pattern recognition",
-                         "Highly articulate communication of complex concepts",
-                         "Patient and methodical approach to problem-solving"
+                         "Deep understanding of architectural patterns",
+                         "Clear communication of complex technical concepts",
+                         "Strong problem-solving methodology"
                      ],
                      "weaknesses": [
-                         "Could provide more specific metrics in experience descriptions",
-                         "Occasional over-reliance on standard library examples"
+                         "Could provide more specific metrics in past project examples",
+                         "Minor hesitation on distributed system edge cases"
                      ],
-                     "improvement_plan": [
-                         "Prepare more data-driven examples of project success",
-                         "Practice explaining complex tradeoffs in shorter 'elevator pitch' formats"
-                     ]
+                     "feedback": "Overall excellent performance. You demonstrated both technical depth and cultural alignment. Focus on quantifiable achievements in future rounds."
                  })
              
              # Failure Report Mock - surfacing the LAST error caught

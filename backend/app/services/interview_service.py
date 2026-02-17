@@ -10,6 +10,7 @@ async def generate_interview_question(position: str, round_type: str, history: l
     Generate a challenging and relevant interview question.
     If there is history, make sure the next question follows naturally or explores a new area within the round.
     Keep the question professional and concise.
+    IMPORTANT: Return ONLY the question text. Do not include any introductory phrases or numbering.
     """
     
     messages = []
@@ -36,6 +37,8 @@ async def analyze_interview_performance(position: str, responses: dict):
     
     Interview Data:
     {responses}
+    
+    IMPORTANT: Return ONLY the valid JSON object. No markdown, no conversational text.
     """
     
     return await ai_hub.chat_completion([{"role": "user", "content": prompt}], system_prompt)
