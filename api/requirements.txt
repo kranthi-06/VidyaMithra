@@ -14,3 +14,4 @@ pypdf
 psycopg2-binary
 email-validator
 google-generativeai
+groq
