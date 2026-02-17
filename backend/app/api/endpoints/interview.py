@@ -8,13 +8,13 @@ from pydantic import BaseModel
 router = APIRouter()
 
 class QuestionRequest(BaseModel):
-    position: str
-    round_type: str
-    history: List[Dict[str, str]]
+    position: str = "Software Engineer"
+    round_type: str = "technical"
+    history: List[Dict[str, Any]] = []
 
 class FinishRequest(BaseModel):
     position: str
-    responses: Dict[str, List[Dict[str, str]]]
+    responses: Dict[str, List[Dict[str, Any]]]
 
 @router.post("/next-question")
 async def get_next_question(
