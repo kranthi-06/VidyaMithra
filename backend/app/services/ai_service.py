@@ -136,6 +136,10 @@ class AIService:
         if messages:
             last_msg = messages[-1]["content"].lower()
         
+        # Calculate keys found for debug log
+        keys_found = [k for k in ["json", "format", "analyze"] if k in last_msg]
+        print(f"DEBUG: Entering Mock Logic. Keys found: {keys_found}")
+        
         # Mock Logic for Interview Questions
         if "interview" in (system_prompt or "").lower():
             if "technical" in (system_prompt or "").lower():
