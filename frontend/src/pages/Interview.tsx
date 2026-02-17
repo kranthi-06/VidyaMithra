@@ -70,9 +70,10 @@ export default function Interview() {
                 history: currentHistory
             });
             setCurrentQuestion(res.data.question);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error fetching question:", error);
-            setCurrentQuestion("Could not load question. Please try again.");
+            const msg = error.response?.data?.detail || error.message || "Unknown error";
+            setCurrentQuestion(`Error loading question: ${msg}`);
         } finally {
             setIsLoading(false);
         }
