@@ -80,7 +80,9 @@ class AIService:
                     )
                     return response.choices[0].message.content
             except Exception as e:
-                logger.error(f"Groq completely failed or exhausted: {str(e)}")
+                import traceback
+                logger.error(f"Groq Request FAILED. Exception: {str(e)}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
                 logger.info("Failing over... Details: " + str(e))
 
         # 2. Try Gemini (Failover)
@@ -160,59 +162,63 @@ class AIService:
             import random
             return random.choice(questions)
 
+        # Debugging why mock logic might be skipped
+        keys_found = [k for k in ["json", "format", "analyze"] if k in last_msg]
+        logger.info(f"Mock Decision - Last Msg Len: {len(last_msg)} | Keys Found: {keys_found} | System Prompt: {system_prompt}")
+
         # Mock Logic for JSON Evaluations (Resume/Interview Analysis)
         if "json" in last_msg or "format" in last_msg or "analyze" in last_msg:
-            # Check if it's an interview analysis or performance evaluation
-            is_interview = "performance" in last_msg or "responses" in last_msg or "interview" in (system_prompt or "").lower()
-            is_resume = "resume" in last_msg or "career" in (system_prompt or "").lower() or not is_interview
+             # Check if it's an interview analysis or performance evaluation
+             is_interview = "performance" in last_msg or "responses" in last_msg or "interview" in (system_prompt or "").lower()
+             is_resume = "resume" in last_msg or "career" in (system_prompt or "").lower() or not is_interview
+ 
+             if is_interview and not is_resume:
+                 return json.dumps({
+                     "ats_score": 85,
+                     "keyword_analysis": {
+                         "matched": ["Communication", "Architectural Patterns", "Problem Solving"],
+                         "missing": ["Specific Metrics"],
+                         "extra": ["Cultural Fit"]
+                     },
+                     "industry_fit": {
+                         "score": 90,
+                         "verdict": "Overall, a very impressive performance. You demonstrated deep technical knowledge and a strong cultural fit.",
+                         "top_industries": ["Technology", "Engineering"]
+                     },
+                     "strengths": [
+                         "Excellence in architectural pattern recognition",
+                         "Highly articulate communication of complex concepts",
+                         "Patient and methodical approach to problem-solving"
+                     ],
+                     "weaknesses": [
+                         "Could provide more specific metrics in experience descriptions",
+                         "Occasional over-reliance on standard library examples"
+                     ],
+                     "improvement_plan": [
+                         "Prepare more data-driven examples of project success",
+                         "Practice explaining complex tradeoffs in shorter 'elevator pitch' formats"
+                     ]
+                 })
+             
+             # Default Resume Analysis Mock (now labeled as demo data to avoid confusion)
+             return json.dumps({
+                 "ats_score": 0,
+                 "keyword_analysis": {
+                     "matched": ["System Processing..."],
+                     "missing": ["Please wait a moment and try again."],
+                     "extra": []
+                 },
+                 "industry_fit": {
+                     "score": 0,
+                     "verdict": "The AI engine is currently experiencing high demand. We are attempting to reconnect.",
+                     "top_industries": ["AI Engineering"]
+                 },
+                 "strengths": ["System is online", "Retry logic active"],
+                 "weaknesses": ["Temporary connection bottleneck"],
+                 "improvement_plan": ["Refresh the page", "Check network connection"]
+             })
 
-            if is_interview and not is_resume:
-                return json.dumps({
-                    "ats_score": 85,
-                    "keyword_analysis": {
-                        "matched": ["Communication", "Architectural Patterns", "Problem Solving"],
-                        "missing": ["Specific Metrics"],
-                        "extra": ["Cultural Fit"]
-                    },
-                    "industry_fit": {
-                        "score": 90,
-                        "verdict": "Overall, a very impressive performance. You demonstrated deep technical knowledge and a strong cultural fit.",
-                        "top_industries": ["Technology", "Engineering"]
-                    },
-                    "strengths": [
-                        "Excellence in architectural pattern recognition",
-                        "Highly articulate communication of complex concepts",
-                        "Patient and methodical approach to problem-solving"
-                    ],
-                    "weaknesses": [
-                        "Could provide more specific metrics in experience descriptions",
-                        "Occasional over-reliance on standard library examples"
-                    ],
-                    "improvement_plan": [
-                        "Prepare more data-driven examples of project success",
-                        "Practice explaining complex tradeoffs in shorter 'elevator pitch' formats"
-                    ]
-                })
-            
-            # Default Resume Analysis Mock (now labeled as demo data to avoid confusion)
-                return json.dumps({
-                    "ats_score": 0,
-                    "keyword_analysis": {
-                        "matched": ["System Processing..."],
-                        "missing": ["Please wait a moment and try again."],
-                        "extra": []
-                    },
-                    "industry_fit": {
-                        "score": 0,
-                        "verdict": "The AI engine is currently experiencing high demand. We are attempting to reconnect.",
-                        "top_industries": ["AI Engineering"]
-                    },
-                    "strengths": ["System is online", "Retry logic active"],
-                    "weaknesses": ["Temporary connection bottleneck"],
-                    "improvement_plan": ["Refresh the page", "Check network connection"]
-                })
-
-        return "That's an excellent point. Could you elaborate more on your specific implementation strategy for that module?"
+        return "SYSTEM_MOCK_FALLBACK: The system could not understand the request context (Resume/Interview)."
 
 # Singleton instance
 ai_hub = AIService()
