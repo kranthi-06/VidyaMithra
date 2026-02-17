@@ -50,7 +50,8 @@ async def analyze_resume(
         raise
     except Exception as e:
         logger.error(f"Unexpected error during resume analysis: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        # Exposing error for user debugging
+        raise HTTPException(status_code=500, detail=f"AI Engine Error: {str(e)}")
 
 @router.post("/analyze-text")
 async def analyze_resume_text(

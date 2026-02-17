@@ -10,11 +10,11 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./test.db"
     
     # API Access (for Auth/Storage if needed)
-    SUPABASE_URL: str
-    SUPABASE_KEY: str
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
     
     # Security
-    SECRET_KEY: str
+    SECRET_KEY: str = "temporary_secret_for_deployment"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
