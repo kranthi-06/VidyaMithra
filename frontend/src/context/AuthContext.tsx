@@ -77,56 +77,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return () => subscription.unsubscribe();
     }, []);
 
-    return () => subscription.unsubscribe();
-}, []);
+    const login = async (data: any) => {
+        const { error } = await supabase.auth.signInWithPassword({
+            email: data.email,
+            password: data.password,
+        });
+        if (error) throw error;
+        // onAuthStateChange will handle user state update
+    };
 
-const login = async (data: any) => {
-    const { error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-    });
-    if (error) throw error;
-    // onAuthStateChange will handle user state update
-};
-
-const register = async (data: any) => {
-    const { error } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-            data: {
-                full_name: data.full_name,
-                username: data.username,
+    const register = async (data: any) => {
+        const { error } = await supabase.auth.signUp({
+            email: data.email,
+            password: data.password,
+            options: {
+                data: {
+                    full_name: data.full_name,
+                    username: data.username,
+                }
             }
-        }
-    });
-    if (error) throw error;
-    // Check if email confirmation is required? Supabase default is often confirmation required.
-    // User behavior depends on Supabase settings.
-};
+        });
+        if (error) throw error;
+        // Check if email confirmation is required? Supabase default is often confirmation required.
+        // User behavior depends on Supabase settings.
+    };
 
-const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-            redirectTo: import.meta.env.VITE_AUTH_CALLBACK_URL || window.location.origin,
-        },
-    });
-    if (error) throw error;
-};
+    const signInWithGoogle = async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: import.meta.env.VITE_AUTH_CALLBACK_URL || window.location.origin,
+            },
+        });
+        if (error) throw error;
+    };
 
-const logout = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem('token');
-    setUser(null);
-    navigate('/login');
-};
+    const logout = async () => {
+        await supabase.auth.signOut();
+        localStorage.removeItem('token');
+        setUser(null);
+        navigate('/login');
+    };
 
-return (
-    <AuthContext.Provider value={{ user, loading, login, register, signInWithGoogle, logout }}>
-        {children}
-    </AuthContext.Provider>
-);
+    return (
+        <AuthContext.Provider value={{ user, loading, login, register, signInWithGoogle, logout }}>
+            {children}
+        </AuthContext.Provider>
+    );
 };
 
 export const useAuth = () => {
