@@ -56,13 +56,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             if (session?.user) {
                 localStorage.setItem('token', session.access_token);
-                // Simple user object from session mostly for email. 
-                // Full profile might take a moment to sync via triggers if it's a new user.
+
                 setUser({
                     email: session.user.email || '',
                     full_name: session.user.user_metadata?.full_name,
                     is_active: true
                 });
+
+                // Navigate only if on auth pages
+                if (window.location.pathname === '/login' || window.location.pathname === '/register' || window.location.pathname === '/') {
+                    navigate('/dashboard');
+                }
             } else {
                 localStorage.removeItem('token');
                 setUser(null);
@@ -70,19 +74,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(false);
         });
 
-        // Navigate only if on auth pages
-        if (window.location.pathname === '/login' || window.location.pathname === '/register' || window.location.pathname === '/') {
-            navigate('/dashboard');
-        }
-    } else {
-        localStorage.removeItem('token');
-        setUser(null);
-    }
-            setLoading(false);
-});
-
-return () => subscription.unsubscribe();
+        return () => subscription.unsubscribe();
     }, []);
+
+    return () => subscription.unsubscribe();
+}, []);
 
 const login = async (data: any) => {
     const { error } = await supabase.auth.signInWithPassword({
