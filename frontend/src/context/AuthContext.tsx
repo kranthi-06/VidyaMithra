@@ -54,20 +54,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         initAuth();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (session) {
-                // Set token for backend API calls
+            if (session?.user) {
                 localStorage.setItem('token', session.access_token);
-
+                // Simple user object from session mostly for email. 
+                // Full profile might take a moment to sync via triggers if it's a new user.
                 setUser({
                     email: session.user.email || '',
                     full_name: session.user.user_metadata?.full_name,
                     is_active: true
                 });
-
-                // Navigate only if on auth pages
-                if (window.location.pathname === '/login' || window.location.pathname === '/register' || window.location.pathname === '/') {
-                    navigate('/dashboard');
-                }
             } else {
                 localStorage.removeItem('token');
                 setUser(null);
@@ -75,56 +70,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(false);
         });
 
-        return () => subscription.unsubscribe();
-    }, []);
-
-    const login = async (data: any) => {
-        const { error } = await supabase.auth.signInWithPassword({
-            email: data.email,
-            password: data.password,
-        });
-        if (error) throw error;
-        // onAuthStateChange will handle user state update
-    };
-
-    const register = async (data: any) => {
-        const { error } = await supabase.auth.signUp({
-            email: data.email,
-            password: data.password,
-            options: {
-                data: {
-                    full_name: data.full_name,
-                    username: data.username,
-                }
-            }
-        });
-        if (error) throw error;
-        // Check if email confirmation is required? Supabase default is often confirmation required.
-        // User behavior depends on Supabase settings.
-    };
-
-    const signInWithGoogle = async () => {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: import.meta.env.VITE_AUTH_CALLBACK_URL || window.location.origin,
-            },
-        });
-        if (error) throw error;
-    };
-
-    const logout = async () => {
-        await supabase.auth.signOut();
+        // Navigate only if on auth pages
+        if (window.location.pathname === '/login' || window.location.pathname === '/register' || window.location.pathname === '/') {
+            navigate('/dashboard');
+        }
+    } else {
         localStorage.removeItem('token');
         setUser(null);
-        navigate('/login');
-    };
+    }
+            setLoading(false);
+});
 
-    return (
-        <AuthContext.Provider value={{ user, loading, login, register, signInWithGoogle, logout }}>
-            {children}
-        </AuthContext.Provider>
-    );
+return () => subscription.unsubscribe();
+    }, []);
+
+const login = async (data: any) => {
+    const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+    });
+    if (error) throw error;
+    // onAuthStateChange will handle user state update
+};
+
+const register = async (data: any) => {
+    const { error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+            data: {
+                full_name: data.full_name,
+                username: data.username,
+            }
+        }
+    });
+    if (error) throw error;
+    // Check if email confirmation is required? Supabase default is often confirmation required.
+    // User behavior depends on Supabase settings.
+};
+
+const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: import.meta.env.VITE_AUTH_CALLBACK_URL || window.location.origin,
+        },
+    });
+    if (error) throw error;
+};
+
+const logout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem('token');
+    setUser(null);
+    navigate('/login');
+};
+
+return (
+    <AuthContext.Provider value={{ user, loading, login, register, signInWithGoogle, logout }}>
+        {children}
+    </AuthContext.Provider>
+);
 };
 
 export const useAuth = () => {
