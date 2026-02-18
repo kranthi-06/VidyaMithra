@@ -55,34 +55,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             if (session) {
+                // Set token for backend API calls
+                localStorage.setItem('token', session.access_token);
+
                 setUser({
                     email: session.user.email || '',
                     full_name: session.user.user_metadata?.full_name,
                     is_active: true
                 });
-                // If on login or register, go to dashboard
+
+                // Navigate only if on auth pages
                 if (window.location.pathname === '/login' || window.location.pathname === '/register' || window.location.pathname === '/') {
                     navigate('/dashboard');
                 }
             } else {
+                localStorage.removeItem('token');
                 setUser(null);
             }
+            setLoading(false);
         });
 
         return () => subscription.unsubscribe();
     }, []);
 
     const login = async (data: any) => {
-        const res = await loginApi(data.email, data.password);
-        localStorage.setItem('token', res.access_token);
-        const userData = await getMe();
-        setUser(userData);
-        navigate('/dashboard');
+        const { error } = await supabase.auth.signInWithPassword({
+            email: data.email,
+            password: data.password,
+        });
+        if (error) throw error;
+        // onAuthStateChange will handle user state update
     };
 
     const register = async (data: any) => {
-        await registerApi(data);
-        await login({ email: data.email, password: data.password });
+        const { error } = await supabase.auth.signUp({
+            email: data.email,
+            password: data.password,
+            options: {
+                data: {
+                    full_name: data.full_name,
+                    username: data.username,
+                }
+            }
+        });
+        if (error) throw error;
+        // Check if email confirmation is required? Supabase default is often confirmation required.
+        // User behavior depends on Supabase settings.
     };
 
     const signInWithGoogle = async () => {
