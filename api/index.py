@@ -14,11 +14,11 @@ except ImportError:
     try:
         from main import app
     except ImportError as e:
-        from fastapi import FastAPI, Response
+        from fastapi import FastAPI, Response, Request
         app = FastAPI()
-        @app.get("/{path:path}")
-        def fallback(path: str):
+        @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+        async def fallback(request: Request, path: str):
             import traceback
-            return Response(content=f"Import Error: {e}\nTraceback: {traceback.format_exc()}\nPaths: {sys.path}", status_code=500)
+            return Response(content=f"Import Error: {e}\nTraceback: {traceback.format_exc()}\nHeaders: {request.headers}\nMethod: {request.method}\nPath: {path}\nSys Path: {sys.path}", status_code=500)
 
 # This 'app' variable is what Vercel's Python builder looks for.
