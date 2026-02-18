@@ -11,7 +11,7 @@ export default function VerifyEmail() {
     const { state } = useLocation();
     const [email, setEmail] = useState(state?.email || '');
     const [otp, setOtp] = useState('');
-    const { verifyOtp } = useAuth();
+    const { verifyOtp, resendOtp } = useAuth();
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
@@ -99,6 +99,26 @@ export default function VerifyEmail() {
                         {isLoading ? "Verifying..." : "Verify & Login"} <ArrowRight className="ml-2 w-5 h-5" />
                     </Button>
                 </form>
+
+                <div className="mt-6 text-center">
+                    <p className="text-slate-500 text-sm mb-2">Didn't receive the code?</p>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={async () => {
+                            try {
+                                showToast('Resending code...', 'info');
+                                await resendOtp(email);
+                                showToast('Verification code resent!', 'success');
+                            } catch (err: any) {
+                                showToast(err.message || 'Failed to resend code', 'error');
+                            }
+                        }}
+                        className="text-indigo-600 hover:text-indigo-700 font-semibold"
+                    >
+                        Resend Verification Code
+                    </Button>
+                </div>
             </motion.div>
         </div>
     );

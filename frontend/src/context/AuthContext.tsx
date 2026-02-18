@@ -15,6 +15,7 @@ interface AuthContextType {
     login: (data: any) => Promise<void>;
     register: (data: any) => Promise<void>;
     verifyOtp: (email: string, token: string) => Promise<void>;
+    resendOtp: (email: string) => Promise<void>;
     signInWithGoogle: () => Promise<void>;
     logout: () => void;
 }
@@ -128,19 +129,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         if (error) throw error;
         // Success will trigger onAuthStateChange automatically
+        const resendOtp = async (email: string) => {
+            const { error } = await supabase.auth.resend({
+                type: 'signup',
+                email: email,
+            });
+            if (error) throw error;
+        };
+
+        return (
+            <AuthContext.Provider value={{ user, loading, login, register, verifyOtp, resendOtp, signInWithGoogle, logout }}>
+                {children}
+            </AuthContext.Provider>
+        );
     };
 
-    return (
-        <AuthContext.Provider value={{ user, loading, login, register, verifyOtp, signInWithGoogle, logout }}>
-            {children}
-        </AuthContext.Provider>
-    );
-};
-
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
-    return context;
-};
+    export const useAuth = () => {
+        const context = useContext(AuthContext);
+        if (context === undefined) {
+            throw new Error('useAuth must be used within an AuthProvider');
+        }
+        return context;
+    };
