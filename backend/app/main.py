@@ -47,8 +47,7 @@ async def validation_exception_handler(request: Request, exc: Exception):
     print(error_msg, file=sys.stderr) # Ensure it prints to console too
     return JSONResponse(
         status_code=500,
-        # WE ARE EXPOSING THE ERROR FOR DEBUGGING - REVERT THIS IN PRODUCTION
-        content={"detail": error_msg},
+        content={"detail": "Internal Server Error. Check logs."},
     )
 
 from starlette.exceptions import HTTPException as StarletteHTTPException
