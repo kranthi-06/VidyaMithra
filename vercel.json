@@ -3,7 +3,12 @@
     "builds": [
         {
             "src": "api/index.py",
-            "use": "@vercel/python"
+            "use": "@vercel/python",
+            "config": {
+                "includeFiles": [
+                    "backend/**"
+                ]
+            }
         },
         {
             "src": "frontend/package.json",
@@ -16,7 +21,7 @@
     "rewrites": [
         {
             "source": "/api/v1/:match*",
-            "destination": "api/index.py"
+            "destination": "/api/index.py"
         },
         {
             "source": "/assets/(.*)",
