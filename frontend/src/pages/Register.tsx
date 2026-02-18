@@ -89,6 +89,9 @@ export default function Register() {
                 } else {
                     errorMsg = JSON.stringify(detail);
                 }
+            } else if (err.response?.data) {
+                // Catch-all for other JSON errors
+                errorMsg = `Server Error: ${JSON.stringify(err.response.data)}`;
             } else if (err.message) {
                 errorMsg = err.message;
             }
