@@ -74,8 +74,9 @@ export default function Register() {
                 full_name: fullName,
                 username: finalUsername
             });
-            showToast('Account created successfully! Redirecting...', 'success');
-            setTimeout(() => navigate('/dashboard'), 1500);
+            showToast('Account created! Please verify your email.', 'success');
+            // Navigate to verify page, passing email for convenience
+            setTimeout(() => navigate('/verify-email', { state: { email } }), 1000);
         } catch (err: any) {
             console.error('Registration Error:', err);
             let errorMsg = 'Registration failed. Please try again.';

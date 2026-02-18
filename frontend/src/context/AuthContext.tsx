@@ -14,6 +14,7 @@ interface AuthContextType {
     loading: boolean;
     login: (data: any) => Promise<void>;
     register: (data: any) => Promise<void>;
+    verifyOtp: (email: string, token: string) => Promise<void>;
     signInWithGoogle: () => Promise<void>;
     logout: () => void;
 }
@@ -119,8 +120,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         navigate('/login');
     };
 
+    const verifyOtp = async (email: string, token: string) => {
+        const { error } = await supabase.auth.verifyOtp({
+            email,
+            token,
+            type: 'signup' // or 'recovery', 'magiclink' depending on usage, but usually 'signup' for new accounts
+        });
+        if (error) throw error;
+        // Success will trigger onAuthStateChange automatically
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, signInWithGoogle, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, register, verifyOtp, signInWithGoogle, logout }}>
             {children}
         </AuthContext.Provider>
     );
