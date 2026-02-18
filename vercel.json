@@ -20,15 +20,15 @@
     ],
     "rewrites": [
         {
-            "source": "/api/v1/:match*",
-            "destination": "/api/index.py"
+            "source": "/api/(.*)",
+            "destination": "api/index.py"
         },
         {
             "source": "/assets/(.*)",
             "destination": "/frontend/assets/$1"
         },
         {
-            "source": "/((?!api/v1|assets/).*)",
+            "source": "/((?!api/|assets/).*)",
             "destination": "/frontend/index.html"
         }
     ],
