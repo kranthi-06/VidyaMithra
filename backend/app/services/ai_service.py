@@ -141,6 +141,31 @@ class AIService:
         logger.warning("All AI providers (Groq/Gemini/OpenAI) failed or no keys found. Using Mock Intelligence fallback.")
         return await self._generate_mock_response(messages, system_prompt)
 
+    async def generate_quiz_questions(self, topic: str, difficulty: str, count: int) -> str:
+        """
+        Generates a list of quiz questions based on topic, difficulty, and count.
+        """
+        system_prompt = f"You are an expert technical interviewer and quiz generator for {topic}."
+        prompt = f"""
+        Generate {count} unique multiple-choice quiz questions for {topic} at a {difficulty} difficulty level.
+        Each question must have 4 options and 1 correct answer.
+        
+        Return the response in the following JSON format ONLY:
+        [
+            {{
+                "id": 1,
+                "question": "The question text",
+                "options": ["Option A", "Option B", "Option C", "Option D"],
+                "correct": 0
+            }},
+            ...
+        ]
+        
+        IMPORTANT: Return ONLY valid JSON. No markdown, no conversational text.
+        """
+        
+        return await self.chat_completion([{"role": "user", "content": prompt}], system_prompt)
+
     async def _generate_mock_response(self, messages: List[Dict[str, str]], system_prompt: Optional[str]) -> str:
         """
         Generates contextual mock responses to keep the demo/application interactive.
@@ -227,7 +252,20 @@ class AIService:
                  "improvement_plan": ["Check logs", "Retry"]
              })
 
-        return "SYSTEM_MOCK_FALLBACK: The system could not understand the request context (Resume/Interview)."
+        # Mock Logic for Quiz Generation
+        if "quiz" in (system_prompt or "").lower():
+            import random
+            mock_questions = [
+                {"id": 1, "question": f"Mock Question 1 for {system_prompt}", "options": ["A", "B", "C", "D"], "correct": 0},
+                {"id": 2, "question": "Mock Question 2", "options": ["A", "B", "C", "D"], "correct": 1},
+                {"id": 3, "question": "Mock Question 3", "options": ["A", "B", "C", "D"], "correct": 2},
+                {"id": 4, "question": "Mock Question 4", "options": ["A", "B", "C", "D"], "correct": 3},
+                {"id": 5, "question": "Mock Question 5", "options": ["A", "B", "C", "D"], "correct": 0}
+            ]
+            # Adjust count if possible, but mock is static for now
+            return json.dumps(mock_questions)
+
+        return "SYSTEM_MOCK_FALLBACK: The system could not understand the request context (Resume/Interview/Quiz)."
 
 # Singleton instance
 ai_hub = AIService()

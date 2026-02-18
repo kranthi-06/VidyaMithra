@@ -3,6 +3,7 @@ import { PremiumNavbar } from '../components/PremiumNavbar';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import api from '../services/api';
 import {
     BrainCircuit,
     Timer,
@@ -90,13 +91,45 @@ export default function Quiz() {
     const [topic, setTopic] = useState('JavaScript');
     const [difficulty, setDifficulty] = useState('Medium');
     const [numQuestions, setNumQuestions] = useState('5');
+    const [quizQuestions, setQuizQuestions] = useState<any[]>(questionsByTopic['JavaScript']);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const quizQuestions = questionsByTopic[topic] || questionsByTopic['JavaScript'];
+    // Initial load fallback (optional)
+    // const quizQuestions = questionsByTopic[topic] || questionsByTopic['JavaScript'];
 
-    const handleStartQuiz = () => {
-        setStep('active');
-        setCurrentQuestion(0);
-        setSelectedAnswers({});
+    const handleStartQuiz = async () => {
+        setIsLoading(true);
+        try {
+            // Try explicit count conversion
+            const count = parseInt(numQuestions);
+
+            const res = await api.post('/quiz/generate', {
+                topic,
+                difficulty,
+                count
+            });
+
+            if (res.data && res.data.length > 0) {
+                setQuizQuestions(res.data);
+            } else {
+                // Fallback if empty (should not happen with robust backend)
+                console.warn("API returned empty questions, using fallback.");
+                setQuizQuestions(questionsByTopic[topic] || questionsByTopic['JavaScript']);
+            }
+
+            setStep('active');
+            setCurrentQuestion(0);
+            setSelectedAnswers({});
+        } catch (error) {
+            console.error("Failed to generate quiz:", error);
+            // Fallback to static on error
+            setQuizQuestions(questionsByTopic[topic] || questionsByTopic['JavaScript']);
+            setStep('active');
+            setCurrentQuestion(0);
+            setSelectedAnswers({});
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleOptionSelect = (optionIndex: number) => {
@@ -214,15 +247,26 @@ export default function Quiz() {
                                             >
                                                 <option value="5">5 Questions</option>
                                                 <option value="10">10 Questions</option>
+                                                <option value="15">15 Questions</option>
+                                                <option value="20">20 Questions</option>
+                                                <option value="30">30 Questions</option>
                                             </select>
                                         </div>
                                     </div>
 
                                     <Button
                                         onClick={handleStartQuiz}
-                                        className="w-full h-16 rounded-2xl bg-gradient-to-r from-[#5c52d2] to-[#7c3aed] text-white font-black text-lg shadow-2xl shadow-purple-200 hover:scale-[1.02] transition-all"
+                                        disabled={isLoading}
+                                        className="w-full h-16 rounded-2xl bg-gradient-to-r from-[#5c52d2] to-[#7c3aed] text-white font-black text-lg shadow-2xl shadow-purple-200 hover:scale-[1.02] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                                     >
-                                        Start {topic} Assessment
+                                        {isLoading ? (
+                                            <span className="flex items-center gap-2">
+                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                Generating {numQuestions} Questions...
+                                            </span>
+                                        ) : (
+                                            `Start ${topic} Assessment`
+                                        )}
                                     </Button>
                                 </Card>
                             </motion.div>
