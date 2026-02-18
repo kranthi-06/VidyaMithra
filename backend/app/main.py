@@ -50,6 +50,20 @@ async def validation_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal Server Error. Check logs."},
     )
 
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        return JSONResponse(
+            status_code=404,
+            content={"detail": f"Debug 404: Route not found for {request.method} {request.url.path}"},
+        )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
