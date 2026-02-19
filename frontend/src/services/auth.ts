@@ -1,6 +1,6 @@
 import api from './api';
 
-export const login = async (username, password) => {
+export const login = async (username: string, password: string): Promise<any> => {
     const formData = new FormData();
     formData.append('username', username);
     formData.append('password', password);
@@ -8,8 +8,19 @@ export const login = async (username, password) => {
     return response.data;
 };
 
-export const register = async (userData) => {
-    const response = await api.post('/users', userData);
+export const register = async (userData: any): Promise<any> => {
+    // userData should contain { email, password, full_name, etc }
+    const response = await api.post('/signup', userData);
+    return response.data;
+};
+
+export const sendOtp = async (email: string): Promise<any> => {
+    const response = await api.post('/send-otp', { email });
+    return response.data;
+};
+
+export const verifyOtp = async (email: string, otp: string): Promise<any> => {
+    const response = await api.post('/verify-otp', { email, otp });
     return response.data;
 };
 

@@ -48,9 +48,14 @@ export default function Login() {
         try {
             await login({ email: email, password });
             showToast('Login successful! Redirecting...', 'success');
-        } catch (err) {
-            setError('Invalid credentials');
-            showToast('Login failed. Please check your credentials.', 'error');
+        } catch (err: any) {
+            console.error(err);
+            let msg = 'Invalid credentials';
+            if (err.response?.data?.detail) {
+                msg = err.response.data.detail;
+            }
+            setError(msg);
+            showToast(msg, 'error');
         } finally {
             setIsLoading(false);
         }

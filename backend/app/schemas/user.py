@@ -37,10 +37,10 @@ class UserBase(BaseModel):
     is_superuser: bool = False
 
 class UserCreate(UserBase):
-    pass  # No password required, handled by Supabase
+    password: str
 
 class UserUpdate(UserBase):
-    pass
+    password: Optional[str] = None
 
 class UserInDBBase(UserBase):
     id: Optional[UUID4] = None

@@ -29,12 +29,16 @@ export default function VerifyEmail() {
 
         try {
             await verifyOtp(email, otp);
-            showToast('Email verified successfully! Logging in...', 'success');
-            // No manual navigate to dashboard needed - AuthContext will handle it when session updates
+            showToast('Email verified successfully! Redirecting to login...', 'success');
+            setTimeout(() => navigate('/login'), 2000);
         } catch (err: any) {
             console.error('Verification Error:', err);
-            setError(err.message || 'Verification failed. Invalid OTP.');
-            showToast(err.message || 'Verification failed', 'error');
+            let errorMsg = 'Verification failed. Invalid OTP.';
+            if (err.response?.data?.detail) {
+                errorMsg = err.response.data.detail;
+            }
+            setError(errorMsg);
+            showToast(errorMsg, 'error');
         } finally {
             setIsLoading(false);
         }

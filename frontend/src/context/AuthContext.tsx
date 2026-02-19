@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { login as loginApi, register as registerApi, getMe } from '../services/auth';
+import { login as loginApi, register as registerApi, getMe, verifyOtp as verifyOtpApi, sendOtp as sendOtpApi } from '../services/auth';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
@@ -27,120 +27,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
+    // Check for existing token on mount
     useEffect(() => {
         const initAuth = async () => {
             const token = localStorage.getItem('token');
             if (token) {
                 try {
+                    // Validate token by fetching user profile
                     const userData = await getMe();
                     setUser(userData);
                 } catch (error) {
+                    console.error("Token invalid or expired", error);
                     localStorage.removeItem('token');
-                }
-            }
-            // Check for Supabase session if redirected from OAuth
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                // If we have a Supabase session, we should handle exchanging it for a backend token
-                // For now, let's keep it simple and at least set the user if we don't have one
-                if (!user && session.user) {
-                    setUser({
-                        email: session.user.email || '',
-                        full_name: session.user.user_metadata?.full_name,
-                        is_active: true
-                    });
+                    setUser(null);
                 }
             }
             setLoading(false);
         };
         initAuth();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (session?.user) {
-                localStorage.setItem('token', session.access_token);
-
-                setUser({
-                    email: session.user.email || '',
-                    full_name: session.user.user_metadata?.full_name,
-                    is_active: true
-                });
-
-                // Navigate only if on auth pages
-                if (window.location.pathname === '/login' || window.location.pathname === '/register' || window.location.pathname === '/') {
-                    navigate('/dashboard');
-                }
-            } else {
-                localStorage.removeItem('token');
-                setUser(null);
-            }
-            setLoading(false);
-        });
-
-        return () => subscription.unsubscribe();
     }, []);
 
     const login = async (data: any) => {
-        const { error } = await supabase.auth.signInWithPassword({
-            email: data.email,
-            password: data.password,
-        });
-        if (error) throw error;
-        // onAuthStateChange will handle user state update
+        const response = await loginApi(data.username || data.email, data.password);
+        if (response.access_token) {
+            localStorage.setItem('token', response.access_token);
+            const userData = await getMe();
+            setUser(userData);
+            navigate('/dashboard');
+        }
     };
 
     const register = async (data: any) => {
-        const { error } = await supabase.auth.signUp({
-            email: data.email,
-            password: data.password,
-            options: {
-                data: {
-                    full_name: data.full_name,
-                    username: data.username,
-                }
-            }
-        });
-        if (error) throw error;
-        // Check if email confirmation is required? Supabase default is often confirmation required.
-        // User behavior depends on Supabase settings.
+        await registerApi(data);
+        // After signup, we DON'T auto-login. We need to verify OTP.
+        // The UI should handle redirection to OTP verification page.
+    };
+
+    const verifyOtp = async (email: string, token: string) => {
+        await verifyOtpApi(email, token);
+        // After verification, the user can login.
+    };
+
+    const resendOtp = async (email: string) => {
+        await sendOtpApi(email);
     };
 
     const signInWithGoogle = async () => {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: import.meta.env.VITE_AUTH_CALLBACK_URL || window.location.origin,
-            },
-        });
-        if (error) throw error;
+        console.warn("Google Sign-In not yet implemented with custom backend.");
+        // We can implement this later if needed.
     };
 
-    const logout = async () => {
-        await supabase.auth.signOut();
+    const logout = () => {
         localStorage.removeItem('token');
         setUser(null);
         navigate('/login');
     };
 
-    const verifyOtp = async (email: string, token: string) => {
-        const { error } = await supabase.auth.verifyOtp({
-            email,
-            token,
-            type: 'signup' // or 'recovery', 'magiclink' depending on usage, but usually 'signup' for new accounts
-        });
-        if (error) throw error;
-        // Success will trigger onAuthStateChange automatically
-    };
-
-    const resendOtp = async (email: string) => {
-        const { error } = await supabase.auth.resend({
-            type: 'signup',
-            email: email,
-        });
-        if (error) throw error;
-    };
-
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, verifyOtp, resendOtp, signInWithGoogle, logout }}>
+        <AuthContext.Provider value={{
+            user,
+            loading,
+            login,
+            register,
+            verifyOtp,
+            resendOtp,
+            signInWithGoogle,
+            logout
+        }}>
             {children}
         </AuthContext.Provider>
     );

@@ -39,7 +39,7 @@ export default function Register() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const { register, signInWithGoogle } = useAuth();
+    const { register, signInWithGoogle, resendOtp } = useAuth();
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
@@ -74,8 +74,18 @@ export default function Register() {
                 full_name: fullName,
                 username: finalUsername
             });
-            showToast('Account created successfully! Redirecting...', 'success');
-            setTimeout(() => navigate('/dashboard'), 1500);
+
+            // Send OTP immediately after signup
+            try {
+                await resendOtp(email);
+                showToast('Account created & OTP sent! Please verify your email.', 'success');
+            } catch (otpErr) {
+                console.error("Failed to send OTP:", otpErr);
+                showToast('Account created, but failed to send OTP. Please click Resend on next page.', 'info');
+            }
+
+            // Navigate to verify page with email in state
+            setTimeout(() => navigate('/verify-email', { state: { email } }), 1500);
         } catch (err: any) {
             console.error('Registration Error:', err);
             let errorMsg = 'Registration failed. Please try again.';
