@@ -91,7 +91,7 @@ export const PremiumNavbar = () => {
                                     </div>
                                 </div>
                                 <div className="text-xs font-bold text-white leading-tight">
-                                    <p>{user?.full_name?.split(' ')[0] || 'User'}</p>
+                                    <p>{(user?.profile?.full_name || user?.full_name || user?.email?.split('@')[0] || 'User').split(' ')[0]}</p>
 
                                 </div>
                             </div>

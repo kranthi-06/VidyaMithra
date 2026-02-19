@@ -82,7 +82,7 @@ export default function Dashboard() {
                         <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
                             <div className="space-y-4 text-center md:text-left">
                                 <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight drop-shadow-lg">
-                                    Welcome back, {user?.full_name?.split(' ')[0] || 'John'}! 👋
+                                    Welcome back, {(user?.profile?.full_name || user?.full_name || user?.email?.split('@')[0] || 'User').split(' ')[0]}! 👋
                                 </h1>
                                 <p className="text-white/90 text-lg font-medium drop-shadow-md">Ready to advance your career today?</p>
                             </div>
@@ -97,8 +97,8 @@ export default function Dashboard() {
                                     <UserIcon className="w-8 h-8 text-white" />
                                 </div>
                                 <div>
-                                    <h4 className="font-black text-xl leading-none mb-1">{user?.full_name || 'John Doe'}</h4>
-                                    <p className="text-white/70 font-bold text-sm">{user?.email || 'john@gmail.com'}</p>
+                                    <h4 className="font-black text-xl leading-none mb-1">{user?.profile?.full_name || user?.full_name || 'User'}</h4>
+                                    <p className="text-white/70 font-bold text-sm">{user?.email || 'user@example.com'}</p>
                                 </div>
                             </motion.div>
                         </div>

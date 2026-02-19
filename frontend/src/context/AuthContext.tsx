@@ -6,6 +6,10 @@ import { supabase } from '../lib/supabase';
 interface User {
     email: string;
     full_name?: string;
+    profile?: {
+        full_name?: string;
+        // Add other profile fields if needed
+    };
     is_active?: boolean;
 }
 

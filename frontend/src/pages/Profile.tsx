@@ -164,7 +164,7 @@ export default function Profile() {
 
                             <div className="flex-1 pb-2 space-y-2 w-full md:w-auto">
                                 <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
-                                    {user?.full_name || 'User Profile'}
+                                    {user?.profile?.full_name || user?.full_name || 'User Profile'}
                                 </h1>
 
                                 {isEditing ? (
