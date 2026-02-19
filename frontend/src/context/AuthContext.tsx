@@ -66,11 +66,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } catch (err) {
                 console.error("Session init error:", err);
             } finally {
-                if (mounted) setLoading(false);
+                // Determine if we should clear loading state
+                if (mounted) {
+                    const isOAuthCallback = window.location.hash.includes('access_token') ||
+                        window.location.hash.includes('type=recovery') ||
+                        window.location.search.includes('code');
+
+                    if (isOAuthCallback) {
+                        console.log("OAuth Callback detected. Waiting for Supabase event...");
+                        // Safety timeout: If Supabase doesn't fire within 5s, unblock UI
+                        setTimeout(() => {
+                            if (mounted && loading) {
+                                console.warn("Supabase auth timeout. Clearing loading state.");
+                                setLoading(false);
+                            }
+                        }, 5000);
+                    } else {
+                        setLoading(false);
+                    }
+                }
             }
         };
 
-        initSession();
+        const sessionPromise = initSession();
 
         // 2. Listen for auth changes (Login, Logout, OAuth Redirects)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
