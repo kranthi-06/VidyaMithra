@@ -75,6 +75,7 @@ def send_otp(
     
     # Send Email
     email_sent = send_email_otp(otp_in.email, otp_code)
+
     if email_sent:
         return {"message": "OTP sent successfully."}
     else:
