@@ -231,8 +231,9 @@ export default function Login() {
                                     onClick={async () => {
                                         try {
                                             await signInWithGoogle();
-                                        } catch (err) {
-                                            showToast('Google sign-in failed', 'error');
+                                        } catch (err: any) {
+                                            console.error("Google Login Error:", err);
+                                            showToast(err.message || 'Google sign-in failed', 'error');
                                         }
                                     }}
                                     variant="outline"

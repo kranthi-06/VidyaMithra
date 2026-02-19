@@ -13,7 +13,7 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     login: (data: any) => Promise<void>;
-    register: (data: any) => Promise<void>;
+    register: (data: any) => Promise<any>;
     verifyOtp: (email: string, otp: string) => Promise<void>;
     resendOtp: (email: string) => Promise<void>;
     signInWithGoogle: () => Promise<void>;
@@ -58,7 +58,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const register = async (data: any) => {
-        await registerApi(data);
+        const response = await registerApi(data);
+        return response;
         // After signup, we DON'T auto-login. We need to verify OTP.
         // The UI should handle redirection to OTP verification page.
     };
@@ -77,8 +78,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signInWithGoogle = async () => {
-        console.warn("Google Sign-In not yet implemented with custom backend.");
-        // We can implement this later if needed.
+        try {
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin + '/dashboard', // Or a callback route
+                },
+            });
+            if (error) throw error;
+            // Supabase handles the redirect.
+        } catch (error) {
+            console.error("Google Sign-In Error:", error);
+            throw error;
+        }
     };
 
     const logout = () => {

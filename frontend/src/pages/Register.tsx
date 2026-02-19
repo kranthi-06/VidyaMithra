@@ -68,7 +68,7 @@ export default function Register() {
             // If username is optional in UI but required by backend, generator or use email prefix
             const finalUsername = username || email.split('@')[0];
 
-            await register({
+            const response = await register({
                 email,
                 password,
                 full_name: fullName,
@@ -76,7 +76,12 @@ export default function Register() {
             });
 
             // OTP is sent by the signup endpoint automatically
-            showToast('Account created & OTP sent! Please verify your email.', 'success');
+            if (response.warning) {
+                showToast(response.message || 'Account created. Check server logs for OTP.', 'info');
+                // Give them more time to read it
+            } else {
+                showToast('Account created & OTP sent! Please verify your email.', 'success');
+            }
 
             // Navigate to verify page with email in state
             setTimeout(() => navigate('/verify-email', { state: { email } }), 1500);

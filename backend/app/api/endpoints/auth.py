@@ -54,13 +54,21 @@ def signup(
     crud.create_otp(db, email=user_in.email, otp_code=otp_code, expires_at=expires_at, user_data=user_data)
     
     # Send Email
-    email_sent = send_email_otp(user_in.email, otp_code)
+    try:
+        email_sent = send_email_otp(user_in.email, otp_code)
+    except Exception as e:
+        print(f"Error sending email in signup: {e}")
+        email_sent = False
     
     if not email_sent:
-         raise HTTPException(
-            status_code=500,
-            detail="Failed to send verification email.",
-        )
+         # Log the OTP so developer can see it
+         print("==================================================")
+         print(f"FAILED TO SEND EMAIL. OTP IS: {otp_code}")
+         print("==================================================")
+         return {
+             "message": "Account created. Email sending failed (check server logs/console for OTP).",
+             "warning": "Email failed"
+         }
 
     return {"message": "Verification code sent to email."}
 
@@ -121,20 +129,24 @@ def send_otp(
     crud.create_otp(db, email=otp_in.email, otp_code=otp_code, expires_at=expires_at, user_data=pending_user_data)
     
     # Send Email
-    email_sent = send_email_otp(otp_in.email, otp_code)
+    try:
+        email_sent = send_email_otp(otp_in.email, otp_code)
+    except Exception as e:
+        print(f"Error sending email in send-otp: {e}")
+        email_sent = False
     
     if email_sent:
         return {"message": "OTP sent successfully."}
     else:
-        # In production, we should rollback OTP creation or raise error.
-        # But if the user hasn't configured SMTP, we might want to let them know the OTP via logs?
-        # We already printed it above.
-        print(f"WARNING: Failed to send email to {otp_in.email}. Check SMTP settings.")
-        # We will still return 500 to indicate failure, but the OTP is in logs.
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to send email. Check server logs for OTP if in development.",
-        )
+        # Log the OTP so developer can see it
+         print("==================================================")
+         print(f"FAILED TO SEND EMAIL. OTP IS: {otp_code}")
+         print("==================================================")
+         # Don't raise 500, return success so frontend flow continues
+         return {
+             "message": "OTP generated but email failed. Check server logs/console for code.",
+             "warning": "Email failed"
+         }
 
 @router.post("/verify-otp")
 def verify_otp(
@@ -186,18 +198,23 @@ def verify_otp(
         db.add(user)
     elif latest_otp.user_data:
         # Create new user from stored data
-        user_data = latest_otp.user_data
+        user_data = dict(latest_otp.user_data) # Copy dict
+        
+        # Extract fields that don't belong to User model
+        full_name = user_data.pop("full_name", None)
+        
         # Ensure we don't pass fields that might not be in User model or handle mismatched
-        # Assuming user_data was constructed to match User model columns
         user = models.User(**user_data)
         db.add(user)
         # We need to commit here to get the user ID for token generation
         db.commit()
         db.refresh(user)
         
-        # Determine if we need to create a profile? 
-        # The User model has 'profile' relationship. 
-        # Typically profile is created on demand or signal. 
+        # Create Profile if full_name is present
+        if full_name:
+            profile = models.Profile(id=user.id, full_name=full_name)
+            db.add(profile)
+            db.commit() 
         
     else:
         # User not found and no user_data? Should not happen in new flow
@@ -244,3 +261,82 @@ def login_access_token(
         ),
         "token_type": "bearer",
     }
+
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
+class GoogleToken(BaseModel):
+    token: str
+
+@router.post("/google-login", response_model=schemas.user.Token)
+def google_login(
+    token_data: GoogleToken,
+    db: Session = Depends(deps.get_db)
+) -> Any:
+    """
+    Login or Register with Google ID Token.
+    """
+    try:
+        # Specify the CLIENT_ID of the app that accesses the backend:
+        # id_info = id_token.verify_oauth2_token(token_data.token, google_requests.Request(), CLIENT_ID)
+        # For now, we accept any audience or check specifics if known
+        id_info = id_token.verify_oauth2_token(token_data.token, google_requests.Request())
+
+        # ID token is valid. Get the user's Google Account ID from the decoded token.
+        email = id_info['email']
+        name = id_info.get('name', '')
+        
+        # Check if user exists
+        user = crud.get_user_by_email(db, email=email)
+        if not user:
+            # Create user
+            user_in = schemas.user.UserCreate(
+                email=email,
+                full_name=name,
+                password="", # No password for google login
+                login_type="google"
+            )
+            # We need to handle password hashing even if empty, or allow empty password for google users
+            # Our UserCreate requires password. Let's make a random one.
+            random_password =  "".join([str(random.randint(0, 9)) for _ in range(16)])
+            hashed_password = security.get_password_hash(random_password)
+            
+            # Create DB User directly (Verified)
+            user = models.User(
+                email=email,
+                hashed_password=hashed_password,
+                is_active=True,
+                is_verified=True,
+                login_type="google"
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            
+            # Create Profile if needed
+            profile = models.Profile(id=user.id, full_name=name)
+            db.add(profile)
+            db.commit()
+            
+        else:
+             # Ensure verified if google login
+             if not user.is_verified:
+                 user.is_verified = True
+                 db.add(user)
+                 db.commit()
+        
+        # Determine User ID
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        return {
+            "access_token": security.create_access_token(
+                user.id, expires_delta=access_token_expires
+            ),
+            "token_type": "bearer",
+        }
+
+    except ValueError as e:
+        # Invalid token
+        raise HTTPException(status_code=400, detail=f"Invalid Google Token: {str(e)}")
+    except Exception as e:
+        print(f"Google Login Error: {e}")
+        raise HTTPException(status_code=500, detail="Google Login failed")

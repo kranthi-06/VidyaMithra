@@ -28,3 +28,8 @@ export const getMe = async () => {
     const response = await api.get('/users/me');
     return response.data;
 };
+
+export const googleLogin = async (idToken: string): Promise<any> => {
+    const response = await api.post('/google-login', { token: idToken });
+    return response.data;
+};
