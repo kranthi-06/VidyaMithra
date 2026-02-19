@@ -3,7 +3,7 @@ from app.models.otp import OTP
 from datetime import datetime, timezone
 from app.core.security import get_password_hash
 
-def create_otp(db: Session, email: str, otp_code: str, expires_at: datetime):
+def create_otp(db: Session, email: str, otp_code: str, expires_at: datetime, user_data: dict = None):
     # Invalidate previous OTPs for this email? Or just create new one.
     # Ideally, we should maybe mark old ones as used or expired.
     # For now, let's just create a new record.
@@ -14,7 +14,8 @@ def create_otp(db: Session, email: str, otp_code: str, expires_at: datetime):
         expires_at=expires_at,
         created_at=datetime.now(timezone.utc),
         attempts=0,
-        is_used=False
+        is_used=False,
+        user_data=user_data
     )
     db.add(db_otp)
     db.commit()

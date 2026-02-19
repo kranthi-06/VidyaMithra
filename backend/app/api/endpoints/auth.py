@@ -12,7 +12,7 @@ from app.services.email_service import send_email_otp
 
 router = APIRouter()
 
-@router.post("/signup", response_model=schemas.user.User)
+@router.post("/signup")
 def signup(
     user_in: schemas.user.UserCreate,
     db: Session = Depends(deps.get_db)
@@ -20,14 +20,49 @@ def signup(
     """
     Create new user.
     """
+    # Check if user already exists and is verified
     user = crud.get_user_by_email(db, email=user_in.email)
     if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system.",
+        if user.is_verified:
+            raise HTTPException(
+                status_code=400,
+                detail="The user with this email already exists in the system.",
+            )
+        # If user exists but not verified, we could either delete the old one or just overwrite via OTP flow.
+        # Since we are moving to deferred creation, if the user exists in 'users' table, it means 
+        # it's a legacy unverified user or from before this change. 
+        # For data consistency, let's treat them as if they need to register again (create OTP).
+    
+    # Generate OTP
+    now = datetime.now(timezone.utc)
+    otp_code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+    expires_at = now + timedelta(minutes=5)
+    
+    # Prepare user data for deferred creation
+    # We store the hashed password to avoid storing plaintext
+    hashed_password = security.get_password_hash(user_in.password)
+    
+    user_data = {
+        "email": user_in.email,
+        "hashed_password": hashed_password,
+        "full_name": user_in.full_name,
+        "is_active": True,
+        "is_verified": True # Will be set to True when created
+    }
+    
+    # Store OTP with user data
+    crud.create_otp(db, email=user_in.email, otp_code=otp_code, expires_at=expires_at, user_data=user_data)
+    
+    # Send Email
+    email_sent = send_email_otp(user_in.email, otp_code)
+    
+    if not email_sent:
+         raise HTTPException(
+            status_code=500,
+            detail="Failed to send verification email.",
         )
-    user = crud.create_user(db, user_in=user_in)
-    return user
+
+    return {"message": "Verification code sent to email."}
 
 @router.post("/send-otp")
 def send_otp(
@@ -38,12 +73,23 @@ def send_otp(
     Send OTP to email.
     """
     user = crud.get_user_by_email(db, email=otp_in.email)
+    
+    # If user not found, check if there is a pending registration (OTP with user_data)
+    pending_user_data = None
     if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found with this email.",
-        )
-    if user.is_verified:
+        latest_otp = crud.get_latest_otp(db, email=otp_in.email)
+        if latest_otp and latest_otp.user_data:
+            pending_user_data = latest_otp.user_data
+        else:
+             raise HTTPException(
+                status_code=404,
+                detail="User not found with this email.",
+            )
+            
+    if user and user.is_verified:
+         return {"message": "User is already verified."}
+            
+    if user and user.is_verified:
          return {"message": "User is already verified."}
 
     # Check cooldown
@@ -71,11 +117,12 @@ def send_otp(
     print(f"DEBUG: OTP for {otp_in.email} is {otp_code}")
 
     # Store OTP
-    crud.create_otp(db, email=otp_in.email, otp_code=otp_code, expires_at=expires_at)
+    # If we have pending_user_data, pass it along so the new OTP can also create the user
+    crud.create_otp(db, email=otp_in.email, otp_code=otp_code, expires_at=expires_at, user_data=pending_user_data)
     
     # Send Email
     email_sent = send_email_otp(otp_in.email, otp_code)
-
+    
     if email_sent:
         return {"message": "OTP sent successfully."}
     else:
@@ -98,8 +145,9 @@ def verify_otp(
     Verify OTP and activate user account.
     """
     user = crud.get_user_by_email(db, email=otp_in.email)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    # logic changed: user might be None if deferred registration
+    # if not user:
+    #    raise HTTPException(status_code=404, detail="User not found")
         
     latest_otp = crud.get_latest_otp(db, email=otp_in.email)
     if not latest_otp:
@@ -130,16 +178,47 @@ def verify_otp(
         crud.increment_attempts(db, latest_otp)
         raise HTTPException(status_code=400, detail="Invalid OTP")
         
-    # Mark user as verified
-    user.is_verified = True
-    db.add(user)
+    # Check if we need to create the user (Deferred Registration)
+    if user:
+        # User already exists (old flow or password reset or unverified user)
+        user.is_verified = True
+        user.is_active = True
+        db.add(user)
+    elif latest_otp.user_data:
+        # Create new user from stored data
+        user_data = latest_otp.user_data
+        # Ensure we don't pass fields that might not be in User model or handle mismatched
+        # Assuming user_data was constructed to match User model columns
+        user = models.User(**user_data)
+        db.add(user)
+        # We need to commit here to get the user ID for token generation
+        db.commit()
+        db.refresh(user)
+        
+        # Determine if we need to create a profile? 
+        # The User model has 'profile' relationship. 
+        # Typically profile is created on demand or signal. 
+        
+    else:
+        # User not found and no user_data? Should not happen in new flow
+        raise HTTPException(status_code=400, detail="Registration data not found. Please sign up again.")
     
     # Mark OTP as used
     crud.mark_otp_as_used(db, latest_otp)
     
     db.commit()
     
-    return {"message": "Email verified successfully"}
+    # Generate access token so user is automatically logged in
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = security.create_access_token(
+        user.id, expires_delta=access_token_expires
+    )
+    
+    return {
+        "message": "Email verified successfully",
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 @router.post("/login/access-token", response_model=schemas.user.Token)
 def login_access_token(

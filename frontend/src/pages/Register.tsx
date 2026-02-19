@@ -75,14 +75,8 @@ export default function Register() {
                 username: finalUsername
             });
 
-            // Send OTP immediately after signup
-            try {
-                await resendOtp(email);
-                showToast('Account created & OTP sent! Please verify your email.', 'success');
-            } catch (otpErr) {
-                console.error("Failed to send OTP:", otpErr);
-                showToast('Account created, but failed to send OTP. Please click Resend on next page.', 'info');
-            }
+            // OTP is sent by the signup endpoint automatically
+            showToast('Account created & OTP sent! Please verify your email.', 'success');
 
             // Navigate to verify page with email in state
             setTimeout(() => navigate('/verify-email', { state: { email } }), 1500);

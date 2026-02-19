@@ -29,8 +29,8 @@ export default function VerifyEmail() {
 
         try {
             await verifyOtp(email, otp);
-            showToast('Email verified successfully! Redirecting to login...', 'success');
-            setTimeout(() => navigate('/login'), 2000);
+            showToast('Email verified successfully! Redirecting to dashboard...', 'success');
+            setTimeout(() => navigate('/dashboard'), 1500);
         } catch (err: any) {
             console.error('Verification Error:', err);
             let errorMsg = 'Verification failed. Invalid OTP.';

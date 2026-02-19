@@ -14,7 +14,7 @@ interface AuthContextType {
     loading: boolean;
     login: (data: any) => Promise<void>;
     register: (data: any) => Promise<void>;
-    verifyOtp: (email: string, token: string) => Promise<void>;
+    verifyOtp: (email: string, otp: string) => Promise<void>;
     resendOtp: (email: string) => Promise<void>;
     signInWithGoogle: () => Promise<void>;
     logout: () => void;
@@ -63,9 +63,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // The UI should handle redirection to OTP verification page.
     };
 
-    const verifyOtp = async (email: string, token: string) => {
-        await verifyOtpApi(email, token);
-        // After verification, the user can login.
+    const verifyOtp = async (email: string, otp: string) => {
+        const response = await verifyOtpApi(email, otp);
+        if (response.access_token) {
+            localStorage.setItem('token', response.access_token);
+            const userData = await getMe();
+            setUser(userData);
+        }
     };
 
     const resendOtp = async (email: string) => {
