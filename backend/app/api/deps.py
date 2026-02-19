@@ -40,7 +40,7 @@ def get_current_user(
         # For Supabase Auth, decode without verify if secret mismatch (development mode)
         # In production, verify_signature MUST be rigorous or use separate verifier for Supabase.
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM], options={"verify_signature": False})
-        # print(f"DEBUG: Decoded Payload: {payload}") # Uncomment for deep debug
+        print(f"DEBUG: Decoded Payload: {payload}") # Uncomment for deep debug
         user_id: str = payload.get("sub")
         email: str = payload.get("email")
         

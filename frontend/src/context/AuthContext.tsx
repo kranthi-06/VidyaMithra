@@ -101,8 +101,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setUser(userData);
                     // Force navigation to dashboard on successful login
                     navigate('/dashboard');
-                } catch (err) {
+                } catch (err: any) {
                     console.error("Backend sync failed on SIGNED_IN:", err);
+                    alert("Authentication Error: Failed to sync user with backend. " + (err.response?.data?.detail || err.message));
+                    // If sync fails, we must NOT leave the user in a limbo state.
+                    // Force logout so they can try again.
+                    localStorage.removeItem('token');
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    navigate('/login');
                 }
             } else if (event === 'SIGNED_OUT') {
                 localStorage.removeItem('token');
