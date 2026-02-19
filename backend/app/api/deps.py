@@ -40,13 +40,16 @@ def get_current_user(
         # For Supabase Auth, decode without verify if secret mismatch (development mode)
         # In production, verify_signature MUST be rigorous or use separate verifier for Supabase.
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM], options={"verify_signature": False})
+        # print(f"DEBUG: Decoded Payload: {payload}") # Uncomment for deep debug
         user_id: str = payload.get("sub")
         email: str = payload.get("email")
         
         if user_id is None:
+            print("ERROR: Token missing 'sub' claim")
             raise credentials_exception
             
-    except (JWTError, ValidationError):
+    except (JWTError, ValidationError) as e:
+        print(f"ERROR: JWT Validation Failed: {e}")
         raise credentials_exception
         
     # 1. Try finding user by ID (Standard backend flow)

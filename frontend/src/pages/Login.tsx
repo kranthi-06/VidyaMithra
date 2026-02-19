@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,11 +30,18 @@ export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const { login, signInWithGoogle } = useAuth();
+    const { login, signInWithGoogle, user } = useAuth();
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
     const navigate = useNavigate();
+
+    // Redirect if already logged in
+    useEffect(() => {
+        if (user) {
+            navigate('/dashboard');
+        }
+    }, [user, navigate]);
 
     const showToast = (message: string, type: 'success' | 'error' | 'info') => {
         setToast({ message, type });
