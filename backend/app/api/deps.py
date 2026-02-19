@@ -53,7 +53,17 @@ def get_current_user(
     # Convert string ID to UUID if necessary or let sqlalchemy handle it?
     # user_id from token is string. crud_user expects UUID.
     # We should cast it, but let's try strict lookup first.
-    user = crud_user.get_user(db, user_id=user_id)
+    user = None
+    try:
+        # Check if user_id is a valid UUID before querying
+        import uuid
+        uuid_obj = uuid.UUID(str(user_id))
+        user = crud_user.get_user(db, user_id=uuid_obj)
+    except (ValueError, TypeError):
+        # user_id is not a UUID (e.g. Google numeric ID), skip strict ID lookup
+        pass
+    except Exception:
+        pass
     
     # 2. If not found, try by EMAIL (Supabase flow or mixed ID)
     if not user and email:

@@ -2,6 +2,7 @@ from datetime import timedelta, datetime, timezone
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import random
 from app import crud, models, schemas
