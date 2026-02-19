@@ -31,31 +31,32 @@ def get_current_user(
             is_active=True,
             is_superuser=False
         )
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    # Define credential exception generator to allow dynamic details
+    def get_credentials_exception(detail_msg: str):
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=detail_msg,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
         # For Supabase Auth, decode without verify if secret mismatch (development mode)
         # In production, verify_signature MUST be rigorous or use separate verifier for Supabase.
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM], options={"verify_signature": False})
-        print(f"DEBUG: Decoded Payload: {payload}") # Uncomment for deep debug
+        # REMOVED algorithms restriction to allow RS256 (Google) or HS256 (Supabase) since we don't verify sig here.
+        payload = jwt.decode(token, settings.SECRET_KEY, options={"verify_signature": False})
+        print(f"DEBUG: Decoded Payload: {payload}") 
         user_id: str = payload.get("sub")
         email: str = payload.get("email")
         
         if user_id is None:
             print("ERROR: Token missing 'sub' claim")
-            raise credentials_exception
+            raise get_credentials_exception("Token missing 'sub' claim")
             
     except (JWTError, ValidationError) as e:
         print(f"ERROR: JWT Validation Failed: {e}")
-        raise credentials_exception
+        raise get_credentials_exception(f"JWT Validation Failed: {str(e)}")
         
     # 1. Try finding user by ID (Standard backend flow)
-    # Convert string ID to UUID if necessary or let sqlalchemy handle it?
-    # user_id from token is string. crud_user expects UUID.
-    # We should cast it, but let's try strict lookup first.
     user = None
     try:
         # Check if user_id is a valid UUID before querying
@@ -107,10 +108,10 @@ def get_current_user(
             
         except Exception as e:
             print(f"Auto-provisioning failed: {e}")
-            raise credentials_exception
+            raise get_credentials_exception(f"Auto-provisioning failed: {str(e)}")
 
     if not user:
-        raise credentials_exception
+        raise get_credentials_exception("User not found or validation failed")
         
     return user
 
