@@ -28,6 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const navigate = useNavigate();
 
     // Check for existing token on mount
+    // Check for existing token on mount and listen for Supabase auth changes
     useEffect(() => {
         const initAuth = async () => {
             const token = localStorage.getItem('token');
@@ -45,6 +46,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(false);
         };
         initAuth();
+
+        // Listen for Supabase Auth Changes (e.g. Google Login Redirect)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+                localStorage.setItem('token', session.access_token);
+                try {
+                    const userData = await getMe();
+                    setUser(userData);
+                    navigate('/dashboard');
+                } catch (error) {
+                    console.error("Failed to sync Supabase user with backend", error);
+                }
+            } else if (event === 'SIGNED_OUT') {
+                // If signed out from Supabase, also clear local state
+                // But normally we handle logout via logout() function
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
 
     const login = async (data: any) => {
