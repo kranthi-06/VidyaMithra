@@ -29,77 +29,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check for existing token on mount
     // Check for existing token on mount and listen for Supabase auth changes
+    // Unified Supabase Auth Logic
     useEffect(() => {
-        const initAuth = async () => {
-            let token = localStorage.getItem('token');
+        let mounted = true;
 
-            // If no local token, check if Supabase has a session (e.g. after OAuth redirect)
-            if (!token) {
-                const { data } = await supabase.auth.getSession();
-                if (data.session) {
-                    token = data.session.access_token;
-                    localStorage.setItem('token', token);
+        const initSession = async () => {
+            try {
+                // 1. Check active session (handles generic persistence AND some OAuth callbacks)
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (mounted) {
+                    if (session) {
+                        console.log("Session found on mount:", session.user.email);
+                        localStorage.setItem('token', session.access_token);
+                        try {
+                            const userData = await getMe();
+                            setUser(userData);
+                        } catch (err) {
+                            console.error("Backend sync failed on mount:", err);
+                        }
+                    } else {
+                        // fallback: check if we have a custom token (not supabase) in local storage?
+                        // Our app mixes them. If getSession is null, maybe we have a legacy/custom token.
+                        const localToken = localStorage.getItem('token');
+                        if (localToken && localToken !== 'undefined') {
+                            try {
+                                const userData = await getMe();
+                                setUser(userData);
+                            } catch (err) {
+                                // Token invalid
+                                localStorage.removeItem('token');
+                            }
+                        }
+                    }
                 }
+            } catch (err) {
+                console.error("Session init error:", err);
+            } finally {
+                if (mounted) setLoading(false);
             }
-
-            if (token) {
-                try {
-                    // Validate token by fetching user profile
-                    const userData = await getMe();
-                    setUser(userData);
-                } catch (error) {
-                    console.error("Token invalid or expired", error);
-                    localStorage.removeItem('token');
-                    setUser(null);
-                }
-            } else {
-                // Check if we are in an OAuth callback flow
-                const isOAuthCallback = window.location.hash.includes('access_token') ||
-                    window.location.search.includes('code') ||
-                    window.location.hash.includes('type=recovery');
-
-                if (isOAuthCallback) {
-                    console.log("OAuth Callback detected. Waiting for Supabase processing...");
-                    return; // Keep loading=true until onAuthStateChange fires
-                }
-            }
-            setLoading(false);
         };
-        initAuth();
 
-        // Listen for Supabase Auth Changes (e.g. Google Login Redirect)
+        initSession();
+
+        // 2. Listen for auth changes (Login, Logout, OAuth Redirects)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log("Supabase Auth Event:", event);
+            console.log("Auth State Change:", event);
 
             if (event === 'SIGNED_IN' && session) {
                 localStorage.setItem('token', session.access_token);
                 try {
                     const userData = await getMe();
                     setUser(userData);
-
-                    // Only navigate if we are on the login page or strict redirect needed
-                    // navigate('/dashboard'); 
-                    // Better to let the router handle it or only if explicit
+                    // Force navigation to dashboard on successful login
                     navigate('/dashboard');
-                } catch (error) {
-                    console.error("Failed to sync Supabase user with backend", error);
+                } catch (err) {
+                    console.error("Backend sync failed on SIGNED_IN:", err);
                 }
-                setLoading(false);
             } else if (event === 'SIGNED_OUT') {
-                // If signed out from Supabase, also clear local state
-                setLoading(false);
-            } else if (event === 'INITIAL_SESSION') {
-                // Handle initial session check if missed by initAuth
-                if (session) {
-                    localStorage.setItem('token', session.access_token);
-                    const userData = await getMe();
-                    setUser(userData);
-                }
-                setLoading(false);
+                localStorage.removeItem('token');
+                setUser(null);
+                navigate('/login');
             }
+            // Ensure loading is false after any event
+            setLoading(false);
         });
 
         return () => {
+            mounted = false;
             subscription.unsubscribe();
         };
     }, []);
