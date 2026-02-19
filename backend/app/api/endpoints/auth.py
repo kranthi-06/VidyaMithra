@@ -1,4 +1,4 @@
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -48,15 +48,25 @@ def send_otp(
 
     # Check cooldown
     latest_otp = crud.get_latest_otp(db, email=otp_in.email)
-    if latest_otp and (datetime.utcnow() - latest_otp.created_at).total_seconds() < 60:
-        raise HTTPException(
-            status_code=429,
-            detail="Please wait 60 seconds before requesting a new OTP.",
-        )
+    
+    # Ensure current time is timezone aware for comparison
+    now = datetime.now(timezone.utc)
+    
+    if latest_otp:
+        # DB datetime should be aware, but let's be safe
+        otp_created_at = latest_otp.created_at
+        if otp_created_at.tzinfo is None:
+            otp_created_at = otp_created_at.replace(tzinfo=timezone.utc)
+            
+        if (now - otp_created_at).total_seconds() < 60:
+            raise HTTPException(
+                status_code=429,
+                detail="Please wait 60 seconds before requesting a new OTP.",
+            )
 
     # Generate OTP
     otp_code = "".join([str(random.randint(0, 9)) for _ in range(6)])
-    expires_at = datetime.utcnow() + timedelta(minutes=5)
+    expires_at = now + timedelta(minutes=5)
     
     print(f"DEBUG: OTP for {otp_in.email} is {otp_code}")
 
@@ -95,7 +105,15 @@ def verify_otp(
         raise HTTPException(status_code=400, detail="No OTP request found")
         
     # Check expiry
-    if datetime.utcnow() > latest_otp.expires_at:
+    # DB stores datetime with timezone (UTC). We must compare with aware datetime.
+    now = datetime.now(timezone.utc)
+    
+    # Ensure database datetime is treated as aware if it comes back naive (unlikely with this error but safe)
+    otp_expires_at = latest_otp.expires_at
+    if otp_expires_at.tzinfo is None:
+        otp_expires_at = otp_expires_at.replace(tzinfo=timezone.utc)
+        
+    if now > otp_expires_at:
         raise HTTPException(status_code=400, detail="OTP expired")
         
     # Check attempts
