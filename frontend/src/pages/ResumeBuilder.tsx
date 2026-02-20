@@ -34,13 +34,12 @@ import { PremiumNavbar } from '@/components/PremiumNavbar';
 import { PremiumBackground } from '@/components/PremiumBackground';
 import { analyzeResumeText } from '@/services/resume';
 import { extractTextFromFile } from '@/utils/ocr';
+import AIBuilder from './ResumeBuilder/index';
 
 type Step = 'selection' | 'upload' | 'builder' | 'analysis' | 'templates';
-type BuilderStep = 1 | 2 | 3 | 4 | 5 | 6;
 
 export default function ResumeBuilder() {
     const [step, setStep] = useState<Step>('selection');
-    const [builderStep, setBuilderStep] = useState<BuilderStep>(1);
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
     const [ocrProgress, setOcrProgress] = useState('');
@@ -49,8 +48,6 @@ export default function ResumeBuilder() {
     const [selectedTemplate, setSelectedTemplate] = useState('modern');
     const [selectedTheme, setSelectedTheme] = useState('indigo');
     const [showPreview, setShowPreview] = useState<string | null>(null);
-
-    // Builder Form State
     const [formData, setFormData] = useState({
         personal: { first: '', last: '', email: '', phone: '', location: '', summary: '' },
         education: [{ degree: '', institution: '', year: '', gpa: '' }],
@@ -108,41 +105,6 @@ export default function ResumeBuilder() {
         setError('');
     };
 
-    const Stepper = () => {
-        const steps = [
-            { id: 1, label: 'Personal Info' },
-            { id: 2, label: 'Education' },
-            { id: 3, label: 'Experience' },
-            { id: 4, label: 'Projects' },
-            { id: 5, label: 'Skills' },
-            { id: 6, label: 'Generate' }
-        ];
-
-        return (
-            <div className="flex items-center justify-between mb-16 max-w-4xl mx-auto overflow-x-auto pb-4 px-4 sm:px-0">
-                {steps.map((s, i) => (
-                    <div key={s.id} className="flex items-center group">
-                        <div className="flex flex-col items-center gap-2">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm transition-all shadow-sm ${builderStep === s.id
-                                ? 'bg-[#5c52d2] text-white ring-4 ring-purple-100'
-                                : builderStep > s.id
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-gray-100 text-gray-400'
-                                }`}>
-                                {builderStep > s.id ? <CheckCircle2 className="w-5 h-5" /> : s.id}
-                            </div>
-                            <span className={`text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${builderStep === s.id ? 'text-[#5c52d2]' : 'text-gray-400'
-                                }`}>{s.label}</span>
-                        </div>
-                        {i < steps.length - 1 && (
-                            <div className={`w-12 sm:w-20 h-0.5 mx-4 mt-[-18px] transition-colors ${builderStep > s.id ? 'bg-green-500' : 'bg-gray-100'
-                                }`} />
-                        )}
-                    </div>
-                ))}
-            </div>
-        );
-    };
 
     return (
         <div className="min-h-screen font-sans pb-20 relative overflow-hidden animated-gradient">
@@ -206,334 +168,7 @@ export default function ResumeBuilder() {
                         )}
 
                         {step === 'builder' && (
-                            <motion.div
-                                key="builder"
-                                initial={{ opacity: 0, scale: 0.98 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.98 }}
-                                className="max-w-4xl mx-auto py-10"
-                            >
-                                <Stepper />
-
-                                <Card className="border-none shadow-2xl bg-white/90 backdrop-blur-sm rounded-[3rem] p-12">
-                                    <AnimatePresence mode="wait">
-                                        {builderStep === 1 && (
-                                            <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                                                <div className="flex items-center gap-4 mb-8">
-                                                    <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-[#5c52d2]">
-                                                        <User className="w-6 h-6" />
-                                                    </div>
-                                                    <h2 className="text-3xl font-black text-gray-900 tracking-tight">Personal Information</h2>
-                                                </div>
-                                                <div className="grid md:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs font-black uppercase text-gray-400 ml-1">First Name</Label>
-                                                        <Input placeholder="John" className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-purple-200 transition-all font-bold px-6" />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs font-black uppercase text-gray-400 ml-1">Last Name</Label>
-                                                        <Input placeholder="Doe" className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-purple-200 transition-all font-bold px-6" />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs font-black uppercase text-gray-400 ml-1">Email</Label>
-                                                        <Input type="email" placeholder="john.doe@email.com" className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-purple-200 transition-all font-bold px-6" />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs font-black uppercase text-gray-400 ml-1">Phone</Label>
-                                                        <Input placeholder="+1 (555) 123-4567" className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-purple-200 transition-all font-bold px-6" />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs font-black uppercase text-gray-400 ml-1">Location</Label>
-                                                    <Input placeholder="City, State, Country" className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-purple-200 transition-all font-bold px-6" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs font-black uppercase text-gray-400 ml-1">Professional Summary</Label>
-                                                    <Textarea placeholder="Brief description of your professional background and career objectives..." className="rounded-3xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-purple-200 transition-all font-bold p-6 min-h-[120px]" />
-                                                </div>
-                                            </motion.div>
-                                        )}
-
-                                        {builderStep === 2 && (
-                                            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                                                <div className="flex items-center gap-4 mb-8">
-                                                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-500">
-                                                        <GraduationCap className="w-6 h-6" />
-                                                    </div>
-                                                    <h2 className="text-3xl font-black text-gray-900 tracking-tight">Education</h2>
-                                                </div>
-                                                <div className="p-8 bg-gray-50/50 rounded-[2rem] border border-gray-100 space-y-6">
-                                                    <div className="grid md:grid-cols-2 gap-6">
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-black uppercase text-gray-400 ml-1">Degree</Label>
-                                                            <Input placeholder="B.S. in Computer Science" className="h-14 rounded-2xl border-gray-100 bg-white shadow-sm font-bold px-6" />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-black uppercase text-gray-400 ml-1">Institution</Label>
-                                                            <Input placeholder="University Name" className="h-14 rounded-2xl border-gray-100 bg-white shadow-sm font-bold px-6" />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-black uppercase text-gray-400 ml-1">Year</Label>
-                                                            <Input placeholder="2020 - 2024" className="h-14 rounded-2xl border-gray-100 bg-white shadow-sm font-bold px-6" />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-black uppercase text-gray-400 ml-1">GPA (Optional)</Label>
-                                                            <Input placeholder="3.8/4.0" className="h-14 rounded-2xl border-gray-100 bg-white shadow-sm font-bold px-6" />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <button className="w-full h-16 border-2 border-dashed border-purple-100 rounded-2xl flex items-center justify-center gap-2 text-purple-400 font-bold hover:bg-purple-50/50 transition-all">
-                                                    <PlusCircle className="w-5 h-5" /> Add Another Education
-                                                </button>
-                                            </motion.div>
-                                        )}
-
-                                        {builderStep === 3 && (
-                                            <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                                                <div className="flex items-center gap-4 mb-8">
-                                                    <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500">
-                                                        <Briefcase className="w-6 h-6" />
-                                                    </div>
-                                                    <h2 className="text-3xl font-black text-gray-900 tracking-tight">Experience</h2>
-                                                </div>
-                                                <div className="p-8 bg-gray-50/50 rounded-[2rem] border border-gray-100 space-y-6">
-                                                    <div className="grid md:grid-cols-2 gap-6">
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-black uppercase text-gray-400 ml-1">Role</Label>
-                                                            <Input placeholder="Software Engineer" className="h-14 rounded-2xl border-gray-100 bg-white shadow-sm font-bold px-6" />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-black uppercase text-gray-400 ml-1">Company</Label>
-                                                            <Input placeholder="Tech Corp" className="h-14 rounded-2xl border-gray-100 bg-white shadow-sm font-bold px-6" />
-                                                        </div>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs font-black uppercase text-gray-400 ml-1">Duration</Label>
-                                                        <Input placeholder="Jan 2022 - Present" className="h-14 rounded-2xl border-gray-100 bg-white shadow-sm font-bold px-6" />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs font-black uppercase text-gray-400 ml-1">Description</Label>
-                                                        <Textarea placeholder="Accomplished X using Y resulting in Z..." className="rounded-3xl border-gray-100 bg-white shadow-sm font-bold p-6 min-h-[120px]" />
-                                                    </div>
-                                                </div>
-                                                <button className="w-full h-16 border-2 border-dashed border-purple-100 rounded-2xl flex items-center justify-center gap-2 text-purple-400 font-bold hover:bg-purple-50/50 transition-all">
-                                                    <PlusCircle className="w-5 h-5" /> Add Experience
-                                                </button>
-                                            </motion.div>
-                                        )}
-
-                                        {builderStep === 4 && (
-                                            <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                                                <div className="flex items-center gap-4 mb-8">
-                                                    <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-green-500">
-                                                        <Laptop className="w-6 h-6" />
-                                                    </div>
-                                                    <h2 className="text-3xl font-black text-gray-900 tracking-tight">Projects</h2>
-                                                </div>
-                                                <div className="p-8 bg-gray-50/50 rounded-[2rem] border border-gray-100 space-y-6">
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs font-black uppercase text-gray-400 ml-1">Project Name</Label>
-                                                        <Input placeholder="AI Assistant" className="h-14 rounded-2xl border-gray-100 bg-white shadow-sm font-bold px-6" />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs font-black uppercase text-gray-400 ml-1">Tech Stack</Label>
-                                                        <Input placeholder="React, Node.js, OpenAI" className="h-14 rounded-2xl border-gray-100 bg-white shadow-sm font-bold px-6" />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs font-black uppercase text-gray-400 ml-1">Description</Label>
-                                                        <Textarea placeholder="Developed a real-time AI tool that..." className="rounded-3xl border-gray-100 bg-white shadow-sm font-bold p-6 min-h-[120px]" />
-                                                    </div>
-                                                </div>
-                                                <button className="w-full h-16 border-2 border-dashed border-purple-100 rounded-2xl flex items-center justify-center gap-2 text-purple-400 font-bold hover:bg-purple-50/50 transition-all">
-                                                    <PlusCircle className="w-5 h-5" /> Add Project
-                                                </button>
-                                            </motion.div>
-                                        )}
-
-                                        {builderStep === 5 && (
-                                            <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                                                <div className="flex items-center gap-4 mb-8">
-                                                    <div className="w-12 h-12 bg-yellow-50 rounded-2xl flex items-center justify-center text-yellow-500">
-                                                        <Wrench className="w-6 h-6" />
-                                                    </div>
-                                                    <h2 className="text-3xl font-black text-gray-900 tracking-tight">Skills & Tags</h2>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs font-black uppercase text-gray-400 ml-1">Technical Skills</Label>
-                                                    <Textarea
-                                                        value={formData.skills}
-                                                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, skills: e.target.value })}
-                                                        placeholder="React, TypeScript, Python, AWS, Docker, Git, Agile..."
-                                                        className="rounded-[2.5rem] border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-purple-200 transition-all font-bold p-10 min-h-[200px] text-lg"
-                                                    />
-                                                </div>
-                                                <div className="flex flex-wrap gap-2 pt-4">
-                                                    {['FastAPI', 'SQL', 'UI/UX', 'Cloud Architecture', 'DevOps'].map(tag => {
-                                                        const isSelected = formData.skills.toLowerCase().includes(tag.toLowerCase());
-                                                        return (
-                                                            <span
-                                                                key={tag}
-                                                                onClick={() => {
-                                                                    const currentSkills = formData.skills.split(',').map(s => s.trim()).filter(s => s !== '');
-                                                                    let newSkills;
-                                                                    if (isSelected) {
-                                                                        newSkills = currentSkills.filter(s => s.toLowerCase() !== tag.toLowerCase());
-                                                                    } else {
-                                                                        newSkills = [...currentSkills, tag];
-                                                                    }
-                                                                    setFormData({ ...formData, skills: newSkills.join(', ') });
-                                                                }}
-                                                                className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest border transition-all cursor-pointer select-none ${isSelected
-                                                                    ? 'bg-[#5c52d2] text-white border-[#5c52d2] shadow-lg shadow-purple-100'
-                                                                    : 'bg-purple-50 text-[#5c52d2] border-purple-100 hover:bg-purple-100'
-                                                                    }`}
-                                                            >
-                                                                {isSelected ? '✓' : '+'} {tag}
-                                                            </span>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </motion.div>
-                                        )}
-
-                                        {builderStep === 6 && (
-                                            <motion.div key="step6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-12">
-                                                {/* Top Review Header */}
-                                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                                                    <div className="space-y-2">
-                                                        <h2 className="text-4xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-                                                            Your Resume is Ready! 🥳
-                                                        </h2>
-                                                        <p className="text-gray-400 text-lg font-medium">Review your resume and download it when you're satisfied</p>
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-4">
-                                                        <Button
-                                                            onClick={() => setStep('templates')}
-                                                            variant="outline"
-                                                            className="h-14 px-8 rounded-2xl border-gray-100 font-black text-gray-500 hover:bg-gray-50 gap-2"
-                                                        >
-                                                            <ArrowLeft className="w-4 h-4" /> Change Template
-                                                        </Button>
-
-                                                        <Button
-                                                            style={{ backgroundColor: selectedTheme === 'indigo' ? '#5c52d2' : selectedTheme === 'blue' ? '#3b82f6' : selectedTheme === 'rose' ? '#f43f5e' : '#334155' }}
-                                                            className="h-14 px-8 rounded-2xl text-white font-black gap-2 shadow-lg hover:opacity-90 transition-all"
-                                                        >
-                                                            <Download className="w-5 h-5" /> Download PDF
-                                                        </Button>
-                                                    </div>
-                                                </div>
-
-                                                {/* Immersive Preview Region */}
-                                                <div className="bg-slate-100/50 rounded-[3rem] p-4 sm:p-12 border border-slate-200/50 min-h-[600px] flex items-center justify-center">
-                                                    <div className="bg-white w-full max-w-3xl aspect-[1/1.414] shadow-2xl rounded-sm p-12 overflow-hidden relative">
-                                                        <div className="space-y-8">
-                                                            <div className="text-center space-y-4 border-b pb-8">
-                                                                <h1 className="text-3xl font-black text-gray-900 uppercase tracking-widest">{formData.personal.first} {formData.personal.last}</h1>
-                                                                <p className="text-gray-600 font-bold tracking-tight text-lg">Software Engineer</p>
-                                                                <div className="text-xs text-gray-400 font-bold flex justify-center gap-4">
-                                                                    <span>{formData.personal.email}</span>
-                                                                    <span>•</span>
-                                                                    <span>{formData.personal.phone}</span>
-                                                                    <span>•</span>
-                                                                    <span>{formData.personal.location}</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="h-0.5 bg-gray-900 w-full"></div>
-                                                            <div className="grid grid-cols-3 gap-8">
-                                                                <div className="space-y-6">
-                                                                    <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em]">Contact</h3>
-                                                                    <p className="text-[8px] text-gray-600 font-bold">{formData.personal.email}</p>
-                                                                </div>
-                                                                <div className="col-span-2 space-y-6">
-                                                                    <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em]">Experience</h3>
-                                                                    {formData.experience.map((exp: any, i: number) => (
-                                                                        <div key={i} className="space-y-1">
-                                                                            <div className="font-bold text-[10px]">{exp.role} • {exp.company}</div>
-                                                                            <div className="text-[8px] text-gray-400 uppercase tracking-widest">{exp.period}</div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-white to-transparent"></div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Feature Band */}
-                                                <div className="bg-[#eff6ff]/60 border border-blue-100 rounded-[2.5rem] p-10 space-y-8">
-                                                    <div className="flex items-center gap-3 text-[#5c52d2]">
-                                                        <Sparkles className="w-5 h-5" />
-                                                        <h3 className="text-xl font-black">Professional Resume Ready!</h3>
-                                                    </div>
-                                                    <div className="grid md:grid-cols-3 gap-8 pt-4">
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-5 h-5 bg-green-500 rounded-md flex items-center justify-center text-white">
-                                                                    <CheckCircle2 className="w-3 h-3" />
-                                                                </div>
-                                                                <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">ATS-Optimized</h4>
-                                                            </div>
-                                                            <p className="text-xs font-bold text-gray-500 leading-relaxed">Your resume is formatted to pass Applicant Tracking Systems used by recruiters.</p>
-                                                        </div>
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center gap-2 text-purple-600">
-                                                                <Sparkles className="w-5 h-5" />
-                                                                <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Professional Design</h4>
-                                                            </div>
-                                                            <p className="text-xs font-bold text-gray-500 leading-relaxed">Industry-standard template with clean typography and proper spacing.</p>
-                                                        </div>
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center gap-2 text-blue-600">
-                                                                <div className="relative">
-                                                                    <FileText className="w-5 h-5" />
-                                                                    <Download className="absolute -bottom-1 -right-1 w-3 h-3 text-blue-700 bg-white rounded-full p-0.5" />
-                                                                </div>
-                                                                <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Instant Download</h4>
-                                                            </div>
-                                                            <p className="text-xs font-bold text-gray-500 leading-relaxed">Click "Download PDF" to get your professionally formatted resume instantly.</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Bottom Navigation */}
-                                                <div className="flex flex-col sm:flex-row justify-center gap-6">
-                                                    <Button
-                                                        onClick={() => setStep('analysis')}
-                                                        variant="outline"
-                                                        className="h-16 px-10 rounded-2xl border-purple-200 text-[#5c52d2] font-black text-lg hover:bg-purple-50 transition-all gap-2"
-                                                    >
-                                                        <TrendingUp className="w-5 h-5" /> Analyze Resume
-                                                    </Button>
-                                                    <Button
-                                                        onClick={() => window.location.href = '/dashboard'}
-                                                        className="h-16 px-10 rounded-2xl bg-[#5c52d2] hover:bg-[#4b43b0] text-white font-black text-lg gap-3 shadow-xl shadow-purple-200 group"
-                                                    >
-                                                        Continue Career Journey <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                                    </Button>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
-                                    <div className="flex items-center justify-between mt-12 pt-12 border-t border-gray-50">
-                                        <Button
-                                            disabled={builderStep === 1}
-                                            onClick={() => builderStep > 1 && setBuilderStep((prev) => (prev - 1) as BuilderStep)}
-                                            variant="ghost"
-                                            className="h-14 px-10 rounded-2xl font-black text-gray-400 hover:text-gray-600 disabled:opacity-0"
-                                        >
-                                            Previous
-                                        </Button>
-                                        <Button
-                                            onClick={() => builderStep < 5 ? setBuilderStep((prev) => (prev + 1) as BuilderStep) : setStep('templates')}
-                                            className="h-14 px-10 rounded-2xl bg-[#5c52d2] hover:bg-[#4b43b0] text-white font-black group gap-3 shadow-lg shadow-purple-100"
-                                        >
-                                            {builderStep === 5 ? 'Choose Template' : 'Next'} <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                        </Button>
-                                    </div>
-                                </Card>
-                            </motion.div>
+                            <AIBuilder onBack={() => setStep('selection')} />
                         )}
 
                         {step === 'upload' && (
@@ -1162,7 +797,7 @@ export default function ResumeBuilder() {
                         )}
                     </AnimatePresence>
                 </main>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
