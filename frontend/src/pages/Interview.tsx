@@ -5,6 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import api from '../services/api';
 import {
+    getAdvancedInterviewQuestion,
+    finishAdvancedInterview,
+    saveProgressSnapshot
+} from '../services/careerPlatform';
+import {
     Mic2,
     MessageSquare,
     Monitor,
@@ -18,7 +23,9 @@ import {
     ArrowRight,
     BrainCircuit,
     Award,
-    Loader2
+    Loader2,
+    Sparkles,
+    Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PremiumBackground } from '../components/PremiumBackground';
@@ -33,6 +40,9 @@ interface Evaluation {
     strengths: string[];
     weaknesses: string[];
     feedback: string;
+    technical_accuracy?: string;
+    communication_clarity?: string;
+    confidence_level?: string;
 }
 
 export default function Interview() {
@@ -53,6 +63,9 @@ export default function Interview() {
     });
     const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
 
+    // ── NEW: Advanced interview state ──────────
+    const [useAdvanced, setUseAdvanced] = useState(true);
+
     const rounds = [
         { id: 'technical', label: 'Technical Round', icon: Monitor, qs: 3 },
         { id: 'managerial', label: 'Managerial Round', icon: BarChart3, qs: 2 },
@@ -64,16 +77,39 @@ export default function Interview() {
     const fetchNextQuestion = async (roundType: string, currentHistory: any[]) => {
         setIsLoading(true);
         try {
-            const res = await api.post('/interview/next-question', {
-                position,
-                round_type: roundType,
-                history: currentHistory
-            });
-            setCurrentQuestion(res.data.question);
+            if (useAdvanced) {
+                // ── Advanced: resume-aware question generation ──
+                const res = await getAdvancedInterviewQuestion(
+                    position,
+                    roundType,
+                    currentHistory,
+                    undefined, // resume summary can be passed if available
+                    undefined  // target skills
+                );
+                setCurrentQuestion(res.question);
+            } else {
+                // ── Standard: original endpoint ──
+                const res = await api.post('/interview/next-question', {
+                    position,
+                    round_type: roundType,
+                    history: currentHistory
+                });
+                setCurrentQuestion(res.data.question);
+            }
         } catch (error: any) {
             console.error("Error fetching question:", error);
-            const msg = error.response?.data?.detail || error.message || "Unknown error";
-            setCurrentQuestion(`Error loading question: ${msg}`);
+            // Fallback to original endpoint if advanced fails
+            try {
+                const res = await api.post('/interview/next-question', {
+                    position,
+                    round_type: roundType,
+                    history: currentHistory
+                });
+                setCurrentQuestion(res.data.question);
+            } catch (fallbackError: any) {
+                const msg = fallbackError.response?.data?.detail || fallbackError.message || "Unknown error";
+                setCurrentQuestion(`Error loading question: ${msg}`);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -108,7 +144,7 @@ export default function Interview() {
             if (currentRound === 'technical') {
                 setCurrentRound('managerial');
                 setQuestionIndex(0);
-                setHistory([]); // Reset history for next round prompt if preferred, or keep for context
+                setHistory([]);
                 await fetchNextQuestion('managerial', []);
             } else if (currentRound === 'managerial') {
                 setCurrentRound('hr');
@@ -126,20 +162,68 @@ export default function Interview() {
     const analyzePerformance = async (responses: any) => {
         setIsLoading(true);
         try {
-            const res = await api.post('/interview/analyze', {
-                position,
-                responses
-            });
-            // Analysis might be a string (JSON string from AI)
-            let data = res.data.analysis;
-            if (typeof data === 'string') {
-                try {
-                    data = JSON.parse(data.replace(/```json\n?|\n?```/g, ''));
-                } catch (e) { console.error("Parse error", e); }
+            if (useAdvanced) {
+                // ── Advanced: structured AI feedback and persistence ──
+                const allResp = [
+                    ...responses.technical,
+                    ...responses.managerial,
+                    ...responses.hr
+                ];
+                const res = await finishAdvancedInterview(
+                    position,
+                    'full', // all rounds
+                    allResp,
+                    undefined,
+                    undefined,
+                    undefined
+                );
+
+                // Map advanced analysis to evaluation format
+                const analysis = res.analysis || {};
+                setEvaluation({
+                    technical_score: analysis.technical_accuracy || analysis.technical_score || '0%',
+                    soft_skills_score: analysis.communication_clarity || analysis.soft_skills_score || '0%',
+                    verdict: analysis.verdict || (analysis.overall_score > 60 ? 'PASS' : 'NEEDS IMPROVEMENT'),
+                    strengths: analysis.strengths || [],
+                    weaknesses: analysis.weaknesses || analysis.areas_for_improvement || [],
+                    feedback: analysis.feedback || analysis.overall_feedback || 'Analysis complete.',
+                    technical_accuracy: analysis.technical_accuracy,
+                    communication_clarity: analysis.communication_clarity,
+                    confidence_level: analysis.confidence_level
+                });
+
+                // Save progress snapshot after interview
+                try { await saveProgressSnapshot(0); } catch (_) { }
+            } else {
+                // ── Standard: original analyze endpoint ──
+                const res = await api.post('/interview/analyze', {
+                    position,
+                    responses
+                });
+                let data = res.data.analysis;
+                if (typeof data === 'string') {
+                    try {
+                        data = JSON.parse(data.replace(/```json\n?|\n?```/g, ''));
+                    } catch (e) { console.error("Parse error", e); }
+                }
+                setEvaluation(data);
             }
-            setEvaluation(data);
         } catch (error) {
             console.error("Error analyzing interview:", error);
+            // Fallback to original
+            try {
+                const res = await api.post('/interview/analyze', {
+                    position,
+                    responses
+                });
+                let data = res.data.analysis;
+                if (typeof data === 'string') {
+                    try {
+                        data = JSON.parse(data.replace(/```json\n?|\n?```/g, ''));
+                    } catch (e) { console.error("Parse error", e); }
+                }
+                setEvaluation(data);
+            } catch (_) { }
         } finally {
             setIsLoading(false);
         }
@@ -214,6 +298,23 @@ export default function Interview() {
                                                 <Mic2 className="w-5 h-5" /> Voice Mode
                                             </button>
                                         </div>
+                                    </div>
+
+                                    {/* AI Mode Toggle */}
+                                    <div className="p-5 rounded-2xl bg-purple-50/60 border-2 border-purple-100 flex items-center gap-4">
+                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                                            <Sparkles className="w-5 h-5 text-[#5c52d2]" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-black text-slate-900">Advanced AI Mode</p>
+                                            <p className="text-[10px] font-bold text-slate-400">Resume-aware questions, structured feedback, and progress tracking</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setUseAdvanced(!useAdvanced)}
+                                            className={`w-12 h-7 rounded-full transition-all ${useAdvanced ? 'bg-[#5c52d2]' : 'bg-slate-200'}`}
+                                        >
+                                            <div className={`w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${useAdvanced ? 'translate-x-6' : 'translate-x-1'}`} />
+                                        </button>
                                     </div>
 
                                     <div className="space-y-4">
@@ -409,6 +510,39 @@ export default function Interview() {
                                                     ))}
                                                 </div>
 
+                                                {/* Advanced AI Breakdown (NEW) */}
+                                                {useAdvanced && (evaluation.communication_clarity || evaluation.confidence_level) && (
+                                                    <Card className="p-8 border-none shadow-lg bg-purple-50/50 rounded-[3rem] border border-purple-100">
+                                                        <div className="flex items-center gap-3 mb-6">
+                                                            <Sparkles className="w-5 h-5 text-[#5c52d2]" />
+                                                            <h3 className="text-xl font-[900] text-slate-900">Advanced AI Breakdown</h3>
+                                                        </div>
+                                                        <div className="grid md:grid-cols-3 gap-6">
+                                                            {evaluation.technical_accuracy && (
+                                                                <div className="p-5 bg-white rounded-2xl text-center space-y-2">
+                                                                    <Shield className="w-6 h-6 text-blue-500 mx-auto" />
+                                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Technical Accuracy</p>
+                                                                    <p className="text-2xl font-[900] text-slate-900">{evaluation.technical_accuracy}</p>
+                                                                </div>
+                                                            )}
+                                                            {evaluation.communication_clarity && (
+                                                                <div className="p-5 bg-white rounded-2xl text-center space-y-2">
+                                                                    <MessageSquare className="w-6 h-6 text-orange-500 mx-auto" />
+                                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Communication</p>
+                                                                    <p className="text-2xl font-[900] text-slate-900">{evaluation.communication_clarity}</p>
+                                                                </div>
+                                                            )}
+                                                            {evaluation.confidence_level && (
+                                                                <div className="p-5 bg-white rounded-2xl text-center space-y-2">
+                                                                    <Zap className="w-6 h-6 text-emerald-500 mx-auto" />
+                                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Confidence</p>
+                                                                    <p className="text-2xl font-[900] text-slate-900">{evaluation.confidence_level}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </Card>
+                                                )}
+
                                                 <div className="grid lg:grid-cols-2 gap-10">
                                                     <Card className="p-12 border-none shadow-lg bg-white/90 backdrop-blur-sm rounded-[4rem] space-y-8 border border-white/20">
                                                         <h3 className="text-3xl font-black text-slate-900 border-b pb-8 border-slate-50">Key Strengths</h3>
@@ -452,7 +586,7 @@ export default function Interview() {
                                                 <p className="text-slate-400 text-xl font-medium max-w-2xl mx-auto">We've identified the exact steps you need to take to crush your next interview.</p>
                                                 <div className="flex gap-6 justify-center pt-6">
                                                     <Button
-                                                        onClick={() => window.location.href = '/learning'}
+                                                        onClick={() => window.location.href = '/career-intelligence'}
                                                         className="h-16 px-12 bg-[#b195ff] text-white rounded-2xl font-black text-lg hover:bg-[#a284ff] shadow-2xl transition-all"
                                                     >
                                                         Explore Roadmap

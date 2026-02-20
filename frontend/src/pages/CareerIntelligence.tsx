@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,10 +19,22 @@ import {
     Sparkles,
     Users,
     Laptop,
-    Briefcase
+    Briefcase,
+    Lock,
+    Unlock,
+    CheckCircle2,
+    BookOpen,
+    Play,
+    Loader2,
+    ExternalLink
 } from 'lucide-react';
+import {
+    generateRoadmap,
+    getActiveRoadmap,
+    getLearningResources
+} from '../services/careerPlatform';
 
-type Step = 'domains' | 'roles' | 'analysis';
+type Step = 'domains' | 'roles' | 'analysis' | 'roadmap';
 
 const domains = [
     {
@@ -91,7 +103,7 @@ const jobRoles = [
         exp: '3-6 years',
         salary: '$85,000 - $140,000',
         skills: ['Python', 'R', 'Machine Learning', 'SQL'],
-        icon: Code // Using Code as placeholder for Data icon
+        icon: Code
     },
     {
         id: 'devops',
@@ -121,10 +133,106 @@ export default function CareerIntelligence() {
     const [selectedRole, setSelectedRole] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
+    // ── New: Roadmap state ──────────────────────
+    const [roadmapData, setRoadmapData] = useState<any>(null);
+    const [roadmapId, setRoadmapId] = useState<string | null>(null);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [learningResources, setLearningResources] = useState<any[]>([]);
+    const [selectedSkillForLearn, setSelectedSkillForLearn] = useState<any>(null);
+    const [loadingResources, setLoadingResources] = useState(false);
+
+    // Check for existing roadmap on mount
+    useEffect(() => {
+        const checkExistingRoadmap = async () => {
+            try {
+                const res = await getActiveRoadmap();
+                if (res.roadmap) {
+                    setRoadmapData(res.roadmap.roadmap_data);
+                    setRoadmapId(res.roadmap.id);
+                    setSelectedRole(res.roadmap.target_role);
+                    setStep('roadmap');
+                }
+            } catch (e) {
+                // No roadmap yet - stay on domains step
+            }
+        };
+        checkExistingRoadmap();
+    }, []);
+
     const filteredRoles = jobRoles.filter(role =>
         role.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         role.skills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
     );
+
+    // Generate roadmap when role is selected
+    const handleRoleSelect = async (roleTitle: string) => {
+        setSelectedRole(roleTitle);
+        setIsGenerating(true);
+        setStep('roadmap');
+
+        try {
+            const role = jobRoles.find(r => r.title === roleTitle);
+            const res = await generateRoadmap(
+                roleTitle,
+                role?.skills || [],
+                []
+            );
+            setRoadmapData(res.roadmap_data);
+            setRoadmapId(res.id);
+        } catch (error) {
+            console.error('Failed to generate roadmap:', error);
+            // Fallback: redirect to dashboard
+            window.location.href = '/dashboard';
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    // Fetch learning resources for a skill
+    const handleLearnSkill = async (skill: any, levelName: string) => {
+        setSelectedSkillForLearn(skill);
+        setLoadingResources(true);
+        try {
+            const res = await getLearningResources(skill.name, levelName);
+            setLearningResources(res.resources || []);
+        } catch (e) {
+            setLearningResources([]);
+        } finally {
+            setLoadingResources(false);
+        }
+    };
+
+    // Navigate to quiz for a skill
+    const handleTakeQuiz = (skill: any, levelName: string) => {
+        window.location.href = `/quiz?skill_id=${skill.id}&skill_name=${encodeURIComponent(skill.name)}&level=${levelName}&roadmap_id=${roadmapId}`;
+    };
+
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case 'completed': return <CheckCircle2 className="w-5 h-5 text-emerald-500" />;
+            case 'unlocked': return <Unlock className="w-5 h-5 text-[#5c52d2]" />;
+            case 'locked': return <Lock className="w-5 h-5 text-slate-300" />;
+            default: return <Lock className="w-5 h-5 text-slate-300" />;
+        }
+    };
+
+    const getStatusStyle = (status: string) => {
+        switch (status) {
+            case 'completed': return 'border-emerald-200 bg-emerald-50/50';
+            case 'unlocked': return 'border-purple-200 bg-white hover:shadow-xl hover:shadow-purple-100/50 cursor-pointer';
+            case 'locked': return 'border-slate-100 bg-slate-50/30 opacity-60';
+            default: return 'border-slate-100 bg-slate-50/30 opacity-60';
+        }
+    };
+
+    const getLevelColor = (name: string) => {
+        switch (name) {
+            case 'Beginner': return { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', accent: 'from-blue-500 to-cyan-500' };
+            case 'Intermediate': return { text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', accent: 'from-orange-500 to-amber-500' };
+            case 'Advanced': return { text: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', accent: 'from-rose-500 to-pink-500' };
+            default: return { text: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200', accent: 'from-slate-500 to-gray-500' };
+        }
+    };
 
     return (
         <div className="min-h-screen bg-[#f8fafc] font-sans pb-20">
@@ -202,7 +310,7 @@ export default function CareerIntelligence() {
                                 <div className="space-y-2">
                                     <h1 className="text-4xl font-[900] text-slate-900 tracking-tight">Select Your Desired Job Role</h1>
                                     <p className="text-slate-400 text-lg font-medium max-w-2xl mx-auto leading-relaxed">
-                                        Choose the specific role you're targeting. We'll analyze your eligibility and create a personalized plan to help you achieve your career goals.
+                                        Choose the specific role you're targeting. We'll generate a personalized AI roadmap to help you achieve your career goals.
                                     </p>
                                 </div>
                             </div>
@@ -221,11 +329,7 @@ export default function CareerIntelligence() {
                                 {filteredRoles.map((role) => (
                                     <Card
                                         key={role.id}
-                                        onClick={() => {
-                                            setSelectedRole(role.id);
-                                            // Handle final selection - maybe navigate to a dashboard or assessment
-                                            window.location.href = '/dashboard';
-                                        }}
+                                        onClick={() => handleRoleSelect(role.title)}
                                         className="group p-8 border-none shadow-sm hover:shadow-xl hover:shadow-rose-100 transition-all cursor-pointer rounded-[2.5rem] bg-white space-y-6"
                                     >
                                         <div className="flex items-center justify-between">
@@ -269,6 +373,183 @@ export default function CareerIntelligence() {
                                     </Card>
                                 ))}
                             </div>
+                        </motion.div>
+                    )}
+
+                    {/* ── NEW: Roadmap View ───────────────────── */}
+                    {step === 'roadmap' && (
+                        <motion.div
+                            key="roadmap"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            className="space-y-12"
+                        >
+                            {isGenerating ? (
+                                <div className="text-center py-32 space-y-8">
+                                    <div className="w-24 h-24 bg-white shadow-xl rounded-[3rem] flex items-center justify-center mx-auto ring-8 ring-purple-50">
+                                        <Loader2 className="w-12 h-12 text-[#5c52d2] animate-spin" />
+                                    </div>
+                                    <h2 className="text-4xl font-black text-slate-900 tracking-tight">Generating Your AI Roadmap...</h2>
+                                    <p className="text-lg font-medium text-slate-400 max-w-xl mx-auto">
+                                        Our AI is creating a personalized learning path for <span className="text-[#5c52d2] font-black">{selectedRole}</span>. This may take a moment.
+                                    </p>
+                                </div>
+                            ) : roadmapData ? (
+                                <>
+                                    <div className="text-center space-y-6">
+                                        <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                                            <Map className="w-8 h-8 text-[#5c52d2]" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <h1 className="text-4xl font-[900] text-slate-900 tracking-tight">Your AI Learning Roadmap</h1>
+                                            <p className="text-slate-400 text-lg font-medium max-w-2xl mx-auto leading-relaxed">
+                                                Personalized path to become a <span className="text-[#5c52d2] font-black">{selectedRole}</span>. Complete skills, pass quizzes, and unlock the next level.
+                                            </p>
+                                        </div>
+                                        <Button
+                                            onClick={() => { setStep('domains'); setRoadmapData(null); setRoadmapId(null); }}
+                                            variant="outline"
+                                            className="h-12 px-8 rounded-xl border-slate-200 font-black text-slate-500 text-xs uppercase tracking-widest"
+                                        >
+                                            Change Target Role
+                                        </Button>
+                                    </div>
+
+                                    {/* Roadmap Levels */}
+                                    <div className="space-y-16">
+                                        {roadmapData.levels?.map((level: any, levelIdx: number) => {
+                                            const colors = getLevelColor(level.name);
+                                            const completedCount = level.skills?.filter((s: any) => s.status === 'completed').length || 0;
+                                            const totalCount = level.skills?.length || 0;
+                                            const progressPct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+                                            return (
+                                                <div key={levelIdx} className="space-y-6">
+                                                    {/* Level Header */}
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`px-6 py-2 rounded-xl bg-gradient-to-r ${colors.accent} text-white text-sm font-black uppercase tracking-widest shadow-lg`}>
+                                                            Level {levelIdx + 1}
+                                                        </div>
+                                                        <h2 className="text-2xl font-[900] text-slate-900 tracking-tight">{level.name}</h2>
+                                                        <span className={`ml-auto px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${colors.bg} ${colors.text}`}>
+                                                            {completedCount}/{totalCount} completed
+                                                        </span>
+                                                    </div>
+                                                    {/* Level Progress Bar */}
+                                                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                        <motion.div
+                                                            initial={{ width: 0 }}
+                                                            animate={{ width: `${progressPct}%` }}
+                                                            className={`h-full bg-gradient-to-r ${colors.accent} rounded-full`}
+                                                        />
+                                                    </div>
+                                                    {/* Skill Grid */}
+                                                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                        {level.skills?.map((skill: any, skillIdx: number) => (
+                                                            <Card
+                                                                key={skill.id}
+                                                                className={`p-6 rounded-[2rem] border-2 transition-all ${getStatusStyle(skill.status)}`}
+                                                            >
+                                                                <div className="space-y-4">
+                                                                    <div className="flex items-start justify-between">
+                                                                        <div className="flex items-center gap-3">
+                                                                            {getStatusIcon(skill.status)}
+                                                                            <h4 className="font-black text-slate-900 text-sm leading-tight">{skill.name}</h4>
+                                                                        </div>
+                                                                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest whitespace-nowrap">
+                                                                            ~{skill.estimated_hours}h
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-slate-400 text-xs font-medium leading-relaxed">{skill.description}</p>
+
+                                                                    {skill.status === 'unlocked' && (
+                                                                        <div className="flex gap-2 pt-2">
+                                                                            <Button
+                                                                                onClick={() => handleLearnSkill(skill, level.name)}
+                                                                                className="flex-1 h-10 rounded-xl bg-slate-100 text-slate-600 font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 shadow-none"
+                                                                            >
+                                                                                <BookOpen className="w-3.5 h-3.5 mr-1.5" /> Learn
+                                                                            </Button>
+                                                                            <Button
+                                                                                onClick={() => handleTakeQuiz(skill, level.name)}
+                                                                                className="flex-1 h-10 rounded-xl bg-gradient-to-r from-[#5c52d2] to-[#7c3aed] text-white font-black text-[10px] uppercase tracking-widest shadow-lg shadow-purple-100"
+                                                                            >
+                                                                                <Play className="w-3.5 h-3.5 mr-1.5" /> Take Quiz
+                                                                            </Button>
+                                                                        </div>
+                                                                    )}
+                                                                    {skill.status === 'completed' && (
+                                                                        <div className="text-center pt-2">
+                                                                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">✓ Skill Mastered</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {skill.status === 'locked' && (
+                                                                        <div className="text-center pt-2">
+                                                                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Complete prerequisites to unlock</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </Card>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Learning Resources Modal */}
+                                    {selectedSkillForLearn && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="space-y-6"
+                                        >
+                                            <Card className="p-8 rounded-[2.5rem] border-none shadow-xl bg-white/90 backdrop-blur-sm border border-white/20">
+                                                <div className="flex items-center justify-between mb-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <BookOpen className="w-6 h-6 text-[#5c52d2]" />
+                                                        <h3 className="text-xl font-[900] text-slate-900">Learning Resources: {selectedSkillForLearn.name}</h3>
+                                                    </div>
+                                                    <button onClick={() => { setSelectedSkillForLearn(null); setLearningResources([]); }} className="text-slate-400 hover:text-slate-600 font-black text-sm">✕ Close</button>
+                                                </div>
+                                                {loadingResources ? (
+                                                    <div className="text-center py-12">
+                                                        <Loader2 className="w-8 h-8 text-[#5c52d2] animate-spin mx-auto mb-4" />
+                                                        <p className="text-slate-400 font-bold">Finding the best resources...</p>
+                                                    </div>
+                                                ) : learningResources.length > 0 ? (
+                                                    <div className="grid md:grid-cols-2 gap-4">
+                                                        {learningResources.map((res: any, idx: number) => (
+                                                            <a
+                                                                key={idx}
+                                                                href={res.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="p-5 rounded-2xl border-2 border-slate-100 hover:border-purple-200 hover:shadow-lg transition-all block group"
+                                                            >
+                                                                <div className="flex items-start gap-4">
+                                                                    <div className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center shrink-0">
+                                                                        <Play className="w-5 h-5" />
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0 space-y-1">
+                                                                        <h4 className="font-black text-slate-900 text-sm leading-tight truncate group-hover:text-[#5c52d2] transition-colors">{res.title}</h4>
+                                                                        <p className="text-[10px] font-bold text-slate-400">{res.channel} • {res.duration}</p>
+                                                                        <p className="text-xs text-slate-400 leading-relaxed">{res.why}</p>
+                                                                    </div>
+                                                                    <ExternalLink className="w-4 h-4 text-slate-300 shrink-0 mt-1" />
+                                                                </div>
+                                                            </a>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-center py-8 text-slate-400 font-medium">No resources found. Try refreshing.</p>
+                                                )}
+                                            </Card>
+                                        </motion.div>
+                                    )}
+                                </>
+                            ) : null}
                         </motion.div>
                     )}
                 </AnimatePresence>

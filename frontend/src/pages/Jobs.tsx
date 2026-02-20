@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PremiumNavbar } from '../components/PremiumNavbar';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,110 +12,205 @@ import {
     Globe,
     Clock,
     IndianRupee,
-    ChevronDown
+    ChevronDown,
+    Loader2,
+    Sparkles,
+    RefreshCw
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { PremiumBackground } from '../components/PremiumBackground';
+import {
+    discoverOpportunities,
+    getMatchedOpportunities
+} from '../services/careerPlatform';
+
+// Static fallback data
+const fallbackJobs = [
+    {
+        title: 'Python Tutor',
+        company: 'CodeAcademy',
+        platform: 'LinkedIn',
+        location: 'Remote',
+        score: 54,
+        status: 'FAIR MATCH',
+        desc: 'Teach Python programming online...',
+        type: 'Remote, Part-time',
+        salary: '₹600/hr',
+        platformLogo: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png'
+    },
+    {
+        title: 'Full Stack Engineer',
+        company: 'TechCorp',
+        platform: 'Naukri',
+        location: 'Remote',
+        score: 48,
+        status: 'DEVELOPING',
+        desc: 'Build scalable web applications using modern tech stack...',
+        type: 'Remote, Full-time',
+        salary: '₹15-25 LPA',
+        platformLogo: 'https://static.naukimg.com/s/4/100/i/naukri_Logo.png'
+    },
+    {
+        title: 'Senior Backend Engineer',
+        company: 'CloudSystems',
+        platform: 'LinkedIn',
+        location: 'Remote',
+        score: 48,
+        status: 'DEVELOPING',
+        desc: 'Design distributed systems and microservices...',
+        type: 'Remote, Full-time',
+        salary: '₹20-35 LPA',
+        platformLogo: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png'
+    },
+    {
+        title: 'Frontend Developer',
+        company: 'WebInnovate',
+        platform: 'Naukri',
+        location: 'Remote',
+        score: 48,
+        status: 'DEVELOPING',
+        desc: 'Create responsive user interfaces with React...',
+        type: 'Remote, Full-time',
+        salary: '₹12-20 LPA',
+        platformLogo: 'https://static.naukimg.com/s/4/100/i/naukri_Logo.png'
+    },
+    {
+        title: 'Frontend Consultant',
+        company: 'Freelance Corp',
+        platform: 'Naukri',
+        location: 'Remote',
+        score: 48,
+        status: 'DEVELOPING',
+        desc: 'Build scalable frontend development consulting...',
+        type: 'Remote, Part-time',
+        salary: '₹800/hr',
+        platformLogo: 'https://static.naukimg.com/s/4/100/i/naukri_Logo.png'
+    },
+    {
+        title: 'Data Science Contractor',
+        company: 'Analytics Co',
+        platform: 'Naukri',
+        location: 'Remote',
+        score: 48,
+        status: 'DEVELOPING',
+        desc: 'Part-time data analysis projects...',
+        type: 'Remote, Part-time',
+        salary: '₹1000/hr',
+        platformLogo: 'https://static.naukimg.com/s/4/100/i/naukri_Logo.png'
+    },
+    {
+        title: 'Contract Python Developer',
+        company: 'TempWork',
+        platform: 'LinkedIn',
+        location: 'Remote',
+        score: 48,
+        status: 'DEVELOPING',
+        desc: 'Backend development contract role...',
+        type: 'Remote, Contract',
+        salary: '₹1000-1300/hr',
+        platformLogo: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png'
+    }
+];
 
 export default function Jobs() {
     const [searchTerm, setSearchTerm] = useState('android, api, css, data, python');
     const [location, setLocation] = useState('Nationwide');
     const [jobType, setJobType] = useState('All Types');
+    const [jobData, setJobData] = useState<any[]>(fallbackJobs);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isAiPowered, setIsAiPowered] = useState(false);
 
-    const jobData = [
-        {
-            title: 'Python Tutor',
-            company: 'CodeAcademy',
-            platform: 'LinkedIn',
-            location: 'Remote',
-            score: 54,
-            status: 'FAIR MATCH',
-            desc: 'Teach Python programming online...',
-            type: 'Remote, Part-time',
-            salary: '₹600/hr',
-            platformLogo: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png'
-        },
-        {
-            title: 'Full Stack Engineer',
-            company: 'TechCorp',
-            platform: 'Naukri',
-            location: 'Remote',
-            score: 48,
-            status: 'DEVELOPING',
-            desc: 'Build scalable web applications using modern tech stack...',
-            type: 'Remote, Full-time',
-            salary: '₹15-25 LPA',
-            platformLogo: 'https://static.naukimg.com/s/4/100/i/naukri_Logo.png'
-        },
-        {
-            title: 'Senior Backend Engineer',
-            company: 'CloudSystems',
-            platform: 'LinkedIn',
-            location: 'Remote',
-            score: 48,
-            status: 'DEVELOPING',
-            desc: 'Design distributed systems and microservices...',
-            type: 'Remote, Full-time',
-            salary: '₹20-35 LPA',
-            platformLogo: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png'
-        },
-        {
-            title: 'Frontend Developer',
-            company: 'WebInnovate',
-            platform: 'Naukri',
-            location: 'Remote',
-            score: 48,
-            status: 'DEVELOPING',
-            desc: 'Create responsive user interfaces with React...',
-            type: 'Remote, Full-time',
-            salary: '₹12-20 LPA',
-            platformLogo: 'https://static.naukimg.com/s/4/100/i/naukri_Logo.png'
-        },
-        {
-            title: 'Frontend Consultant',
-            company: 'Freelance Corp',
-            platform: 'Naukri',
-            location: 'Remote',
-            score: 48,
-            status: 'DEVELOPING',
-            desc: 'Build scalable frontend development consulting...',
-            type: 'Remote, Part-time',
-            salary: '₹800/hr',
-            platformLogo: 'https://static.naukimg.com/s/4/100/i/naukri_Logo.png'
-        },
-        {
-            title: 'Data Science Contractor',
-            company: 'Analytics Co',
-            platform: 'Naukri',
-            location: 'Remote',
-            score: 48,
-            status: 'DEVELOPING',
-            desc: 'Part-time data analysis projects...',
-            type: 'Remote, Part-time',
-            salary: '₹1000/hr',
-            platformLogo: 'https://static.naukimg.com/s/4/100/i/naukri_Logo.png'
-        },
-        {
-            title: 'Contract Python Developer',
-            company: 'TempWork',
-            platform: 'LinkedIn',
-            location: 'Remote',
-            score: 48,
-            status: 'DEVELOPING',
-            desc: 'Backend development contract role...',
-            type: 'Remote, Contract',
-            salary: '₹1000-1300/hr',
-            platformLogo: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png'
+    const handleApply = (title: string, platform: string, link?: string) => {
+        if (link) {
+            window.open(link, '_blank');
+            return;
         }
-    ];
-
-    const handleApply = (title: string, platform: string) => {
         const query = encodeURIComponent(title);
         if (platform === 'Naukri') {
             window.open(`https://www.naukri.com/${query.replace(/%20/g, '-')}-jobs`, '_blank');
         } else {
             window.open(`https://www.linkedin.com/jobs/search/?keywords=${query}`, '_blank');
         }
+    };
+
+    // ── AI-Powered Search ──────────────────────
+    const handleAISearch = async () => {
+        setIsLoading(true);
+        try {
+            const skills = searchTerm.split(',').map(s => s.trim()).filter(Boolean);
+
+            // First try getting matched opportunities
+            const matchedRes = await getMatchedOpportunities(
+                skills,
+                undefined,
+                jobType === 'All Types' ? undefined : jobType.toLowerCase()
+            );
+
+            if (matchedRes.opportunities && matchedRes.opportunities.length > 0) {
+                const mapped = matchedRes.opportunities.map((opp: any) => ({
+                    title: opp.title,
+                    company: opp.company || 'Unknown Company',
+                    platform: opp.source || 'Web',
+                    location: opp.location || location,
+                    score: opp.match_score || 50,
+                    status: opp.match_score > 70 ? 'STRONG MATCH' : opp.match_score > 50 ? 'FAIR MATCH' : 'DEVELOPING',
+                    desc: opp.description || 'Click to view details on the original platform.',
+                    type: opp.opportunity_type || 'Full-time',
+                    salary: opp.salary || 'Not disclosed',
+                    platformLogo: opp.source?.toLowerCase()?.includes('linkedin')
+                        ? 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png'
+                        : 'https://static.naukimg.com/s/4/100/i/naukri_Logo.png',
+                    link: opp.link
+                }));
+                setJobData(mapped);
+                setIsAiPowered(true);
+            } else {
+                // Discover new opportunities via AI
+                const discoverRes = await discoverOpportunities(
+                    'Software Engineer',
+                    skills
+                );
+                if (discoverRes.opportunities && discoverRes.opportunities.length > 0) {
+                    const mapped = discoverRes.opportunities.map((opp: any) => ({
+                        title: opp.title,
+                        company: opp.company || 'Unknown Company',
+                        platform: opp.source || 'Web',
+                        location: opp.location || location,
+                        score: opp.match_score || 50,
+                        status: opp.match_score > 70 ? 'STRONG MATCH' : opp.match_score > 50 ? 'FAIR MATCH' : 'DEVELOPING',
+                        desc: opp.description || 'Click to view details on the original platform.',
+                        type: opp.opportunity_type || 'Full-time',
+                        salary: opp.salary || 'Not disclosed',
+                        platformLogo: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
+                        link: opp.link
+                    }));
+                    setJobData(mapped);
+                    setIsAiPowered(true);
+                } else {
+                    // Keep fallback data
+                    setJobData(fallbackJobs);
+                    setIsAiPowered(false);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch AI opportunities:', error);
+            setJobData(fallbackJobs);
+            setIsAiPowered(false);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const getScoreColor = (score: number) => {
+        if (score >= 70) return 'bg-emerald-500';
+        if (score >= 50) return 'bg-orange-400';
+        return 'bg-red-500';
+    };
+
+    const getStatusColor = (status: string) => {
+        if (status === 'STRONG MATCH') return 'text-emerald-500';
+        if (status === 'FAIR MATCH') return 'text-orange-500';
+        return 'text-red-500';
     };
 
     return (
@@ -127,7 +222,10 @@ export default function Jobs() {
                 <main className="max-w-[1240px] mx-auto px-6 pt-4">
                     <div className="space-y-2 mb-10">
                         <h1 className="text-3xl font-[900] text-slate-900 tracking-tight">Job Opportunities</h1>
-                        <p className="text-slate-400 font-medium">Find jobs matching your skills and experience from Naukri and LinkedIn</p>
+                        <p className="text-slate-400 font-medium">
+                            Find jobs matching your skills and experience from Naukri and LinkedIn
+                            {isAiPowered && <span className="ml-2 text-[#5c52d2] font-black text-xs uppercase tracking-widest">• AI Powered</span>}
+                        </p>
                     </div>
 
                     {/* Search Bar Section */}
@@ -183,14 +281,37 @@ export default function Jobs() {
                                 </div>
                             </div>
                         </div>
-                        <Button className="w-full h-14 mt-8 rounded-xl bg-[#b195ff] hover:bg-[#a284ff] text-white font-black text-sm uppercase tracking-[0.2em] shadow-lg shadow-purple-100 transition-all flex items-center gap-3">
-                            <Search className="w-4 h-4" /> Search Jobs
+                        <Button
+                            onClick={handleAISearch}
+                            disabled={isLoading}
+                            className="w-full h-14 mt-8 rounded-xl bg-[#b195ff] hover:bg-[#a284ff] text-white font-black text-sm uppercase tracking-[0.2em] shadow-lg shadow-purple-100 transition-all flex items-center gap-3 disabled:opacity-70"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" /> Finding AI-Matched Jobs...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="w-4 h-4" /> AI-Powered Job Search
+                                </>
+                            )}
                         </Button>
                     </Card>
 
                     {/* Results Section */}
                     <div className="space-y-1 mb-8">
-                        <h2 className="text-2xl font-[900] text-slate-800">Found {jobData.length} Jobs</h2>
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-[900] text-slate-800">Found {jobData.length} Jobs</h2>
+                            {isAiPowered && (
+                                <Button
+                                    onClick={handleAISearch}
+                                    variant="outline"
+                                    className="h-9 px-4 rounded-lg border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-widest"
+                                >
+                                    <RefreshCw className="w-3 h-3 mr-1.5" /> Refresh
+                                </Button>
+                            )}
+                        </div>
                         <p className="text-slate-400 text-sm font-bold">Matching skills: <span className="text-blue-500">{searchTerm}</span></p>
                     </div>
 
@@ -205,8 +326,7 @@ export default function Jobs() {
                                 <Card className="p-8 rounded-[2.5rem] border-none shadow-xl shadow-slate-200/40 bg-white/90 backdrop-blur-sm hover:scale-[1.02] transition-all flex flex-col h-full relative overflow-hidden group border border-white/20">
                                     <div className="flex justify-between items-start mb-4">
                                         <h3 className="text-xl font-black text-slate-800 leading-tight pr-12">{job.title}</h3>
-                                        <div className={`absolute top-6 right-6 px-3 py-1 rounded-lg flex items-center gap-1.5 shadow-sm ${job.score > 50 ? 'bg-orange-400' : 'bg-red-500'
-                                            } text-white`}>
+                                        <div className={`absolute top-6 right-6 px-3 py-1 rounded-lg flex items-center gap-1.5 shadow-sm ${getScoreColor(job.score)} text-white`}>
                                             <Star className="w-3 h-3 fill-current" />
                                             <span className="text-xs font-black">{job.score}%</span>
                                         </div>
@@ -228,8 +348,7 @@ export default function Jobs() {
                                     </div>
 
                                     <div className="mb-4">
-                                        <span className={`text-[10px] font-black uppercase tracking-widest ${job.status === 'FAIR MATCH' ? 'text-orange-500' : 'text-red-500'
-                                            }`}>
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${getStatusColor(job.status)}`}>
                                             {job.status}
                                         </span>
                                         <p className="text-slate-500 text-sm font-medium mt-1 mb-6 leading-relaxed">
@@ -248,7 +367,7 @@ export default function Jobs() {
                                         </div>
 
                                         <Button
-                                            onClick={() => handleApply(job.title, job.platform)}
+                                            onClick={() => handleApply(job.title, job.platform, job.link)}
                                             className="w-full h-14 rounded-2xl bg-[#b195ff] hover:bg-[#a284ff] text-white font-black text-sm transition-all group shadow-lg shadow-purple-50"
                                         >
                                             Apply Now <ExternalLink className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform opacity-50" />

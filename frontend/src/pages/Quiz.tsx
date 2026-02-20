@@ -1,9 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PremiumNavbar } from '../components/PremiumNavbar';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import api from '../services/api';
+import {
+    generateSkillQuiz,
+    submitSkillQuiz,
+    saveProgressSnapshot
+} from '../services/careerPlatform';
 import {
     BrainCircuit,
     Timer,
@@ -15,7 +20,10 @@ import {
     Zap,
     BookOpen,
     HelpCircle,
-    ArrowRight
+    ArrowRight,
+    Loader2,
+    Shield,
+    Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PremiumBackground } from '../components/PremiumBackground';
@@ -94,35 +102,82 @@ export default function Quiz() {
     const [quizQuestions, setQuizQuestions] = useState<any[]>(questionsByTopic['JavaScript']);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Initial load fallback (optional)
-    // const quizQuestions = questionsByTopic[topic] || questionsByTopic['JavaScript'];
+    // ── NEW: Roadmap-linked quiz state ──────────
+    const [isRoadmapQuiz, setIsRoadmapQuiz] = useState(false);
+    const [roadmapSkillId, setRoadmapSkillId] = useState<string | null>(null);
+    const [roadmapSkillName, setRoadmapSkillName] = useState<string | null>(null);
+    const [roadmapLevel, setRoadmapLevel] = useState<string | null>(null);
+    const [roadmapId, setRoadmapId] = useState<string | null>(null);
+    const [passThreshold, setPassThreshold] = useState<number>(70);
+    const [quizResult, setQuizResult] = useState<any>(null);
+
+    // Check URL params for roadmap-linked quiz on mount
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const skillId = params.get('skill_id');
+        const skillName = params.get('skill_name');
+        const level = params.get('level');
+        const rmId = params.get('roadmap_id');
+
+        if (skillId && skillName && level) {
+            setIsRoadmapQuiz(true);
+            setRoadmapSkillId(skillId);
+            setRoadmapSkillName(skillName);
+            setRoadmapLevel(level);
+            setRoadmapId(rmId);
+            setTopic(skillName);
+
+            // Map roadmap level to difficulty
+            const diffMap: Record<string, string> = {
+                'Beginner': 'Easy',
+                'Intermediate': 'Medium',
+                'Advanced': 'Hard'
+            };
+            setDifficulty(diffMap[level] || 'Medium');
+        }
+    }, []);
 
     const handleStartQuiz = async () => {
         setIsLoading(true);
         try {
-            // Try explicit count conversion
-            const count = parseInt(numQuestions);
+            if (isRoadmapQuiz && roadmapSkillName && roadmapLevel) {
+                // ── Roadmap-linked quiz: use gating endpoint ──
+                const count = parseInt(numQuestions);
+                const res = await generateSkillQuiz(
+                    roadmapSkillName,
+                    roadmapLevel,
+                    count
+                );
 
-            const res = await api.post('/quiz/generate', {
-                topic,
-                difficulty,
-                count
-            });
-
-            if (res.data && res.data.length > 0) {
-                setQuizQuestions(res.data);
+                if (res.questions && res.questions.length > 0) {
+                    setQuizQuestions(res.questions);
+                    setPassThreshold(res.threshold || 70);
+                } else {
+                    setQuizQuestions(questionsByTopic[topic] || questionsByTopic['JavaScript']);
+                }
             } else {
-                // Fallback if empty (should not happen with robust backend)
-                console.warn("API returned empty questions, using fallback.");
-                setQuizQuestions(questionsByTopic[topic] || questionsByTopic['JavaScript']);
+                // ── Standard quiz: use existing endpoint ──
+                const count = parseInt(numQuestions);
+                const res = await api.post('/quiz/generate', {
+                    topic,
+                    difficulty,
+                    count
+                });
+
+                if (res.data && res.data.length > 0) {
+                    setQuizQuestions(res.data);
+                } else {
+                    console.warn("API returned empty questions, using fallback.");
+                    setQuizQuestions(questionsByTopic[topic] || questionsByTopic['JavaScript']);
+                }
             }
 
             setStep('active');
             setCurrentQuestion(0);
             setSelectedAnswers({});
+            setQuizResult(null);
         } catch (error) {
             console.error("Failed to generate quiz:", error);
-            // Fallback to static on error
             setQuizQuestions(questionsByTopic[topic] || questionsByTopic['JavaScript']);
             setStep('active');
             setCurrentQuestion(0);
@@ -139,11 +194,37 @@ export default function Quiz() {
         });
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (currentQuestion < quizQuestions.length - 1) {
             setCurrentQuestion(prev => prev + 1);
         } else {
             setStep('results');
+
+            // ── If roadmap quiz, submit to gating system ──
+            if (isRoadmapQuiz && roadmapSkillId && roadmapSkillName && roadmapLevel) {
+                try {
+                    const answers = Object.entries(selectedAnswers).map(([idx, selected]) => ({
+                        question_id: parseInt(idx),
+                        selected,
+                        correct: quizQuestions[parseInt(idx)].correct,
+                        question_text: quizQuestions[parseInt(idx)].question
+                    }));
+
+                    const result = await submitSkillQuiz(
+                        roadmapId,
+                        roadmapSkillId,
+                        roadmapSkillName,
+                        roadmapLevel,
+                        answers
+                    );
+                    setQuizResult(result);
+
+                    // Save a progress snapshot after quiz
+                    try { await saveProgressSnapshot(0); } catch (_) { }
+                } catch (e) {
+                    console.error("Failed to submit roadmap quiz:", e);
+                }
+            }
         }
     };
 
@@ -156,6 +237,8 @@ export default function Quiz() {
     const score = Object.entries(selectedAnswers).reduce((acc, [idx, ans]) => {
         return acc + (ans === quizQuestions[parseInt(idx)].correct ? 1 : 0);
     }, 0);
+
+    const scorePercent = Math.round((score / quizQuestions.length) * 100);
 
     return (
         <div className="min-h-screen font-sans pb-20 overflow-x-hidden relative animated-gradient">
@@ -183,35 +266,67 @@ export default function Quiz() {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <h1 className="text-4xl font-[900] text-slate-900 tracking-tight">Test Your Knowledge</h1>
+                                        <h1 className="text-4xl font-[900] text-slate-900 tracking-tight">
+                                            {isRoadmapQuiz ? `Skill Assessment: ${roadmapSkillName}` : 'Test Your Knowledge'}
+                                        </h1>
                                         <p className="text-slate-400 text-lg font-medium max-w-lg mx-auto leading-relaxed">
-                                            Choose a language and prove your expertise with our high-fidelity skill assessments.
+                                            {isRoadmapQuiz
+                                                ? `Pass this ${roadmapLevel} level quiz to unlock the next skill in your roadmap.`
+                                                : 'Choose a language and prove your expertise with our high-fidelity skill assessments.'
+                                            }
                                         </p>
                                     </div>
+                                    {/* Roadmap quiz badge */}
+                                    {isRoadmapQuiz && (
+                                        <div className="flex items-center justify-center gap-2">
+                                            <Shield className="w-4 h-4 text-[#5c52d2]" />
+                                            <span className="text-xs font-black text-[#5c52d2] uppercase tracking-widest">
+                                                Pass threshold: {passThreshold}%
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <Card className="p-10 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[2.5rem] space-y-10 max-w-2xl mx-auto border border-white/20">
-                                    <div className="space-y-6">
-                                        <div className="flex items-center gap-3 text-slate-400 text-xs font-black uppercase tracking-widest">
-                                            <BookOpen className="w-4 h-4 text-blue-500" />
-                                            Select Technology
+                                    {/* Topic selection: show only for standard quizzes */}
+                                    {!isRoadmapQuiz && (
+                                        <div className="space-y-6">
+                                            <div className="flex items-center gap-3 text-slate-400 text-xs font-black uppercase tracking-widest">
+                                                <BookOpen className="w-4 h-4 text-blue-500" />
+                                                Select Technology
+                                            </div>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                {languages.map((lang) => (
+                                                    <button
+                                                        key={lang.name}
+                                                        onClick={() => setTopic(lang.name)}
+                                                        className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition-all ${topic === lang.name
+                                                            ? `border-transparent shadow-xl ring-2 ring-slate-900 ${lang.bg} ${lang.color}`
+                                                            : 'border-slate-50 bg-slate-50/50 text-slate-400 hover:bg-white hover:border-slate-200'
+                                                            }`}
+                                                    >
+                                                        <BrainCircuit className="w-6 h-6" />
+                                                        <span className="text-xs font-black uppercase tracking-widest">{lang.name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                            {languages.map((lang) => (
-                                                <button
-                                                    key={lang.name}
-                                                    onClick={() => setTopic(lang.name)}
-                                                    className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition-all ${topic === lang.name
-                                                        ? `border-transparent shadow-xl ring-2 ring-slate-900 ${lang.bg} ${lang.color}`
-                                                        : 'border-slate-50 bg-slate-50/50 text-slate-400 hover:bg-white hover:border-slate-200'
-                                                        }`}
-                                                >
-                                                    <BrainCircuit className="w-6 h-6" />
-                                                    <span className="text-xs font-black uppercase tracking-widest">{lang.name}</span>
-                                                </button>
-                                            ))}
+                                    )}
+
+                                    {/* If roadmap quiz, show skill info card */}
+                                    {isRoadmapQuiz && (
+                                        <div className="p-6 rounded-2xl bg-purple-50/60 border-2 border-purple-100 space-y-3">
+                                            <div className="flex items-center gap-3">
+                                                <Sparkles className="w-5 h-5 text-[#5c52d2]" />
+                                                <span className="font-black text-slate-900">Roadmap Skill Quiz</span>
+                                            </div>
+                                            <p className="text-sm font-bold text-slate-500">
+                                                Skill: <span className="text-[#5c52d2]">{roadmapSkillName}</span> •
+                                                Level: <span className="text-[#5c52d2]">{roadmapLevel}</span> •
+                                                Threshold: <span className="text-[#5c52d2]">{passThreshold}%</span>
+                                            </p>
                                         </div>
-                                    </div>
+                                    )}
 
                                     <div className="grid sm:grid-cols-2 gap-8">
                                         <div className="space-y-4">
@@ -223,11 +338,11 @@ export default function Quiz() {
                                                 {['Easy', 'Medium', 'Hard'].map((lvl) => (
                                                     <button
                                                         key={lvl}
-                                                        onClick={() => setDifficulty(lvl)}
+                                                        onClick={() => !isRoadmapQuiz && setDifficulty(lvl)}
                                                         className={`flex-1 h-12 rounded-xl border text-[10px] font-black tracking-widest uppercase transition-all ${difficulty === lvl
                                                             ? 'bg-[#5c52d2] text-white border-transparent shadow-lg'
                                                             : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50'
-                                                            }`}
+                                                            } ${isRoadmapQuiz ? 'cursor-default' : ''}`}
                                                     >
                                                         {lvl}
                                                     </button>
@@ -265,7 +380,7 @@ export default function Quiz() {
                                                 Generating {numQuestions} Questions...
                                             </span>
                                         ) : (
-                                            `Start ${topic} Assessment`
+                                            isRoadmapQuiz ? `Start ${roadmapSkillName} Assessment` : `Start ${topic} Assessment`
                                         )}
                                     </Button>
                                 </Card>
@@ -285,7 +400,7 @@ export default function Quiz() {
                                         Question {currentQuestion + 1} of {quizQuestions.length}
                                     </h3>
                                     <div className="flex items-center gap-2 text-xs font-black text-blue-500 uppercase tracking-widest">
-                                        {topic} • {difficulty}
+                                        {isRoadmapQuiz ? `${roadmapSkillName} • ${roadmapLevel}` : `${topic} • ${difficulty}`}
                                     </div>
                                 </div>
 
@@ -349,7 +464,7 @@ export default function Quiz() {
                                     <div className="relative w-full h-full bg-white rounded-full flex items-center justify-center shadow-2xl border-4 border-white">
                                         <div className="flex flex-col items-center">
                                             <span className="text-6xl font-[900] text-[#5c52d2] tracking-tighter">
-                                                {Math.round((score / quizQuestions.length) * 100)}%
+                                                {scorePercent}%
                                             </span>
                                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">Score Captured</span>
                                         </div>
@@ -364,20 +479,45 @@ export default function Quiz() {
                                         {score === quizQuestions.length ? 'Perfect Score! 🥳' : score > quizQuestions.length / 2 ? 'Great Job! 👏' : 'Keep Practicing! 💪'}
                                     </h1>
                                     <p className="text-slate-500 text-lg font-medium">
-                                        You answered {score} out of {quizQuestions.length} questions correctly in {topic}.
+                                        You answered {score} out of {quizQuestions.length} questions correctly in {isRoadmapQuiz ? roadmapSkillName : topic}.
                                     </p>
                                 </div>
+
+                                {/* Roadmap Quiz Result Banner */}
+                                {isRoadmapQuiz && quizResult && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className={`max-w-xl mx-auto p-6 rounded-[2rem] border-2 ${quizResult.passed
+                                            ? 'bg-emerald-50 border-emerald-200'
+                                            : 'bg-rose-50 border-rose-200'
+                                            }`}
+                                    >
+                                        <div className="flex items-center justify-center gap-3 mb-3">
+                                            {quizResult.passed
+                                                ? <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                                                : <Target className="w-6 h-6 text-rose-500" />
+                                            }
+                                            <span className={`text-lg font-black ${quizResult.passed ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                                {quizResult.passed ? '🎉 Skill Mastered! Roadmap Progressed.' : `Need ${passThreshold}% to pass. Try again!`}
+                                            </span>
+                                        </div>
+                                        {quizResult.passed && quizResult.skill_unlocked && (
+                                            <p className="text-sm font-bold text-emerald-600">Next skill in your roadmap has been unlocked!</p>
+                                        )}
+                                    </motion.div>
+                                )}
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-2xl mx-auto pt-8">
                                     <Card className="p-8 border-none bg-blue-50/90 backdrop-blur-sm rounded-3xl space-y-2 shadow-lg">
                                         <Target className="w-6 h-6 text-blue-500 mx-auto" />
                                         <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Accuracy</p>
-                                        <p className="text-2xl font-black text-blue-600">{Math.round((score / quizQuestions.length) * 100)}%</p>
+                                        <p className="text-2xl font-black text-blue-600">{scorePercent}%</p>
                                     </Card>
                                     <Card className="p-8 border-none bg-green-50/90 backdrop-blur-sm rounded-3xl space-y-2 shadow-lg">
                                         <Zap className="w-6 h-6 text-green-500 mx-auto" />
                                         <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Level</p>
-                                        <p className="text-2xl font-black text-green-600">{difficulty}</p>
+                                        <p className="text-2xl font-black text-green-600">{isRoadmapQuiz ? roadmapLevel : difficulty}</p>
                                     </Card>
                                     <Card className="p-8 border-none bg-purple-50/90 backdrop-blur-sm rounded-3xl space-y-2 shadow-lg">
                                         <CheckCircle2 className="w-6 h-6 text-purple-500 mx-auto" />
@@ -387,19 +527,39 @@ export default function Quiz() {
                                 </div>
 
                                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-10">
-                                    <Button
-                                        onClick={() => setStep('setup')}
-                                        variant="outline"
-                                        className="h-14 px-10 rounded-2xl border-slate-100 font-black text-slate-600 hover:bg-slate-50"
-                                    >
-                                        Try Another Quiz
-                                    </Button>
-                                    <Button
-                                        onClick={() => window.location.href = '/dashboard'}
-                                        className="h-14 px-10 rounded-2xl bg-slate-900 text-white font-black shadow-xl hover:bg-black transition-all gap-2"
-                                    >
-                                        Back to Dashboard <ArrowRight className="w-5 h-5" />
-                                    </Button>
+                                    {isRoadmapQuiz ? (
+                                        <>
+                                            <Button
+                                                onClick={() => setStep('setup')}
+                                                variant="outline"
+                                                className="h-14 px-10 rounded-2xl border-slate-100 font-black text-slate-600 hover:bg-slate-50"
+                                            >
+                                                Retry Quiz
+                                            </Button>
+                                            <Button
+                                                onClick={() => window.location.href = '/career-intelligence'}
+                                                className="h-14 px-10 rounded-2xl bg-slate-900 text-white font-black shadow-xl hover:bg-black transition-all gap-2"
+                                            >
+                                                Back to Roadmap <ArrowRight className="w-5 h-5" />
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Button
+                                                onClick={() => setStep('setup')}
+                                                variant="outline"
+                                                className="h-14 px-10 rounded-2xl border-slate-100 font-black text-slate-600 hover:bg-slate-50"
+                                            >
+                                                Try Another Quiz
+                                            </Button>
+                                            <Button
+                                                onClick={() => window.location.href = '/dashboard'}
+                                                className="h-14 px-10 rounded-2xl bg-slate-900 text-white font-black shadow-xl hover:bg-black transition-all gap-2"
+                                            >
+                                                Back to Dashboard <ArrowRight className="w-5 h-5" />
+                                            </Button>
+                                        </>
+                                    )}
                                 </div>
                             </motion.div>
                         )}

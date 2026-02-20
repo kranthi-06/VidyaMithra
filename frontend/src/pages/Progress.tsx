@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { PremiumNavbar } from '../components/PremiumNavbar';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,49 +21,155 @@ import {
     BarChart3,
     Users2,
     ArrowUpRight,
-    Mic2
+    Mic2,
+    Loader2,
+    Shield,
+    Sparkles,
+    RefreshCw
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { PremiumBackground } from '../components/PremiumBackground';
+import {
+    getCurrentProgress,
+    getProgressHistory,
+    saveProgressSnapshot,
+    getQuizHistory,
+    getAdvancedInterviewHistory
+} from '../services/careerPlatform';
+
+// Fallback data
+const fallbackQuizHistory = [
+    { date: 'Nov 7, 2025, 04:39 PM', topic: 'JavaScript', diff: 'Easy', score: '60%', result: 'Review' },
+    { date: 'Nov 5, 2025, 11:22 PM', topic: 'JavaScript', diff: 'Hard', score: '33%', result: 'Review' },
+    { date: 'Nov 5, 2025, 11:15 PM', topic: 'C', diff: 'Easy', score: '0%', result: 'Review' },
+    { date: 'Nov 3, 2025, 11:34 PM', topic: 'Python', diff: 'Easy', score: '20%', result: 'Review' },
+    { date: 'Nov 3, 2025, 10:34 PM', topic: 'JavaScript', diff: 'Easy', score: '60%', result: 'Review' },
+    { date: 'Nov 3, 2025, 10:02 PM', topic: 'JavaScript', diff: 'Easy', score: '20%', result: 'Review' },
+    { date: 'Nov 3, 2025, 09:29 PM', topic: 'JavaScript', diff: 'Easy', score: '40%', result: 'Review' },
+    { date: 'Nov 3, 2025, 04:43 PM', topic: 'JavaScript', diff: 'Easy', score: '20%', result: 'Review' },
+];
+
+const fallbackInterviewHistory = [
+    {
+        role: 'Software Engineer',
+        date: 'Nov 3, 2025, 11:37 PM',
+        overall: '5%',
+        rounds: [
+            { type: 'TECHNICAL', time: '1m 58s', score: '5%', icon: Monitor }
+        ]
+    },
+    {
+        role: 'AI Developer',
+        date: 'Nov 3, 2025, 10:36 PM',
+        overall: '4%',
+        rounds: [
+            { type: 'TECHNICAL', time: '1m 6s', score: '4%', icon: Monitor }
+        ]
+    },
+    {
+        role: 'AI',
+        date: 'Nov 3, 2025, 10:11 PM',
+        overall: '7%',
+        rounds: [
+            { type: 'TECHNICAL', time: '1m 12s', score: '7%', icon: Monitor }
+        ]
+    }
+];
 
 export default function Progress() {
-    const quizHistory = [
-        { date: 'Nov 7, 2025, 04:39 PM', topic: 'JavaScript', diff: 'Easy', score: '60%', result: 'Review' },
-        { date: 'Nov 5, 2025, 11:22 PM', topic: 'JavaScript', diff: 'Hard', score: '33%', result: 'Review' },
-        { date: 'Nov 5, 2025, 11:15 PM', topic: 'C', diff: 'Easy', score: '0%', result: 'Review' },
-        { date: 'Nov 3, 2025, 11:34 PM', topic: 'Python', diff: 'Easy', score: '20%', result: 'Review' },
-        { date: 'Nov 3, 2025, 10:34 PM', topic: 'JavaScript', diff: 'Easy', score: '60%', result: 'Review' },
-        { date: 'Nov 3, 2025, 10:02 PM', topic: 'JavaScript', diff: 'Easy', score: '20%', result: 'Review' },
-        { date: 'Nov 3, 2025, 09:29 PM', topic: 'JavaScript', diff: 'Easy', score: '40%', result: 'Review' },
-        { date: 'Nov 3, 2025, 04:43 PM', topic: 'JavaScript', diff: 'Easy', score: '20%', result: 'Review' },
-    ];
+    const [quizHistory, setQuizHistory] = useState<any[]>(fallbackQuizHistory);
+    const [interviewHistory, setInterviewHistory] = useState<any[]>(fallbackInterviewHistory);
+    const [progressData, setProgressData] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
-    const interviewHistory = [
-        {
-            role: 'Software Engineer',
-            date: 'Nov 3, 2025, 11:37 PM',
-            overall: '5%',
-            rounds: [
-                { type: 'TECHNICAL', time: '1m 58s', score: '5%', icon: Monitor }
-            ]
-        },
-        {
-            role: 'AI Developer',
-            date: 'Nov 3, 2025, 10:36 PM',
-            overall: '4%',
-            rounds: [
-                { type: 'TECHNICAL', time: '1m 6s', score: '4%', icon: Monitor }
-            ]
-        },
-        {
-            role: 'AI',
-            date: 'Nov 3, 2025, 10:11 PM',
-            overall: '7%',
-            rounds: [
-                { type: 'TECHNICAL', time: '1m 12s', score: '7%', icon: Monitor }
-            ]
+    useEffect(() => {
+        loadAllData();
+    }, []);
+
+    const loadAllData = async () => {
+        setIsLoading(true);
+        await Promise.allSettled([
+            loadProgress(),
+            loadQuizHistory(),
+            loadInterviewHistory()
+        ]);
+        setIsLoading(false);
+    };
+
+    const loadProgress = async () => {
+        try {
+            const res = await getCurrentProgress(0);
+            setProgressData(res);
+        } catch (e) {
+            console.error('Failed to load progress:', e);
         }
-    ];
+    };
+
+    const loadQuizHistory = async () => {
+        try {
+            const res = await getQuizHistory();
+            if (res.attempts && res.attempts.length > 0) {
+                const mapped = res.attempts.map((a: any) => ({
+                    date: new Date(a.attempted_at).toLocaleString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    }),
+                    topic: a.skill_name,
+                    diff: a.level || 'Easy',
+                    score: `${a.score}%`,
+                    result: a.passed ? 'Passed ✓' : 'Review'
+                }));
+                setQuizHistory(mapped);
+            }
+        } catch (e) {
+            // Keep fallback data
+        }
+    };
+
+    const loadInterviewHistory = async () => {
+        try {
+            const res = await getAdvancedInterviewHistory();
+            if (res.sessions && res.sessions.length > 0) {
+                const mapped = res.sessions.map((s: any) => ({
+                    role: s.position || 'Interview',
+                    date: new Date(s.created_at).toLocaleString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    }),
+                    overall: `${s.overall_score || 0}%`,
+                    rounds: [
+                        { type: (s.round_type || 'TECHNICAL').toUpperCase(), time: s.duration || 'N/A', score: `${s.overall_score || 0}%`, icon: Monitor }
+                    ]
+                }));
+                setInterviewHistory(mapped);
+            }
+        } catch (e) {
+            // Keep fallback data
+        }
+    };
+
+    const handleRefreshProgress = async () => {
+        setIsRefreshing(true);
+        try {
+            await saveProgressSnapshot(0);
+            await loadAllData();
+        } catch (e) {
+            console.error('Failed to refresh:', e);
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    // Computed stats from dynamic data or fallback
+    const quizAvgScore = progressData?.quiz_avg_score ?? 32;
+    const quizTaken = progressData?.total_quizzes ?? quizHistory.length;
+    const quizPassed = progressData?.quizzes_passed ?? 0;
+    const interviewAvgScore = progressData?.interview_avg_score ?? 5;
+    const interviewsPassed = progressData?.interviews_passed ?? 0;
+    const interviewsTaken = interviewHistory.length;
+    const readinessScore = progressData?.career_readiness_score ?? null;
+    const skillCompletion = progressData?.skill_completion_pct ?? 0;
 
     return (
         <div className="min-h-screen font-sans pb-20 overflow-x-hidden relative animated-gradient">
@@ -75,7 +182,49 @@ export default function Progress() {
                     <div className="text-center space-y-4">
                         <h1 className="text-5xl font-[900] text-slate-900 tracking-tight">Your Learning Progress</h1>
                         <p className="text-slate-400 text-lg font-medium">Track your growth and achievements across all activities</p>
+                        <Button
+                            onClick={handleRefreshProgress}
+                            variant="outline"
+                            disabled={isRefreshing}
+                            className="h-10 px-6 rounded-xl border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-widest"
+                        >
+                            {isRefreshing ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+                            Refresh Stats
+                        </Button>
                     </div>
+
+                    {/* Career Readiness Score (NEW) */}
+                    {readinessScore !== null && (
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                            <Card className="p-10 border-none shadow-2xl bg-gradient-to-r from-[#5c52d2] to-[#7c3aed] rounded-[3rem] text-white relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                                <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
+                                    <div className="w-32 h-32 bg-white/10 rounded-[2.5rem] flex items-center justify-center shrink-0 backdrop-blur-sm border border-white/20">
+                                        <div className="text-center">
+                                            <p className="text-5xl font-[900] tracking-tighter">{Math.round(readinessScore)}%</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3 flex-1 text-center md:text-left">
+                                        <div className="flex items-center gap-2 justify-center md:justify-start">
+                                            <Sparkles className="w-5 h-5" />
+                                            <h3 className="text-2xl font-[900] tracking-tight">Career Readiness Score</h3>
+                                        </div>
+                                        <p className="text-white/70 text-sm font-medium leading-relaxed">
+                                            AI-calculated based on your resume quality, skill completion ({Math.round(skillCompletion)}%), quiz performance, and interview results.
+                                        </p>
+                                        <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden max-w-md">
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${readinessScore}%` }}
+                                                transition={{ duration: 1, delay: 0.3 }}
+                                                className="h-full bg-white/40 rounded-full"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+                        </motion.div>
+                    )}
 
                     {/* Top Stats Cards */}
                     <div className="grid md:grid-cols-3 gap-8">
@@ -89,13 +238,13 @@ export default function Progress() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-3">Quiz Performance</p>
-                                    <p className="text-4xl font-[900] text-slate-900 tracking-tighter">32%</p>
+                                    <p className="text-4xl font-[900] text-slate-900 tracking-tighter">{quizAvgScore}%</p>
                                     <p className="text-xs font-bold text-slate-400 mt-2">Average Score</p>
                                 </div>
                                 <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
-                                    <motion.div initial={{ width: 0 }} animate={{ width: '32%' }} className="h-full bg-blue-500 rounded-full" />
+                                    <motion.div initial={{ width: 0 }} animate={{ width: `${quizAvgScore}%` }} className="h-full bg-blue-500 rounded-full" />
                                 </div>
-                                <p className="text-[10px] font-bold text-slate-400">0 out of 8 quizzes passed</p>
+                                <p className="text-[10px] font-bold text-slate-400">{quizPassed} out of {quizTaken} quizzes passed</p>
                             </div>
                         </Card>
 
@@ -109,11 +258,11 @@ export default function Progress() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-3">Quizzes Taken</p>
-                                    <p className="text-4xl font-[900] text-slate-900 tracking-tighter">8</p>
+                                    <p className="text-4xl font-[900] text-slate-900 tracking-tighter">{quizTaken}</p>
                                     <p className="text-xs font-bold text-slate-400 mt-2">Current Count</p>
                                 </div>
                                 <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
-                                    <motion.div initial={{ width: 0 }} animate={{ width: '65%' }} className="h-full bg-orange-500 rounded-full" />
+                                    <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(quizTaken * 10, 100)}%` }} className="h-full bg-orange-500 rounded-full" />
                                 </div>
                                 <p className="text-[10px] font-bold text-slate-400">Total attempts across all topics</p>
                             </div>
@@ -129,13 +278,13 @@ export default function Progress() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-3">Interview Score</p>
-                                    <p className="text-4xl font-[900] text-slate-900 tracking-tighter">5%</p>
+                                    <p className="text-4xl font-[900] text-slate-900 tracking-tighter">{interviewAvgScore}%</p>
                                     <p className="text-xs font-bold text-slate-400 mt-2">Average Score</p>
                                 </div>
                                 <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
-                                    <motion.div initial={{ width: 0 }} animate={{ width: '5%' }} className="h-full bg-rose-500 rounded-full" />
+                                    <motion.div initial={{ width: 0 }} animate={{ width: `${interviewAvgScore}%` }} className="h-full bg-rose-500 rounded-full" />
                                 </div>
-                                <p className="text-[10px] font-bold text-slate-400">0 out of 3 interviews passed</p>
+                                <p className="text-[10px] font-bold text-slate-400">{interviewsPassed} out of {interviewsTaken} interviews passed</p>
                             </div>
                         </Card>
                     </div>
@@ -174,7 +323,9 @@ export default function Progress() {
                                                     <span className="text-sm font-black text-slate-900">{q.topic}</span>
                                                 </td>
                                                 <td className="px-8 py-6">
-                                                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${q.diff === 'Hard' ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500'
+                                                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${q.diff === 'Hard' ? 'bg-rose-50 text-rose-500'
+                                                        : q.diff === 'Medium' ? 'bg-orange-50 text-orange-500'
+                                                            : 'bg-blue-50 text-blue-500'
                                                         }`}>
                                                         {q.diff}
                                                     </span>
@@ -183,9 +334,15 @@ export default function Progress() {
                                                     <span className="text-sm font-black text-slate-900">{q.score}</span>
                                                 </td>
                                                 <td className="px-8 py-6">
-                                                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-slate-100 text-slate-400 text-xs font-black uppercase tracking-widest hover:border-rose-100 hover:text-rose-500 transition-all">
-                                                        ✕ Review <ChevronRight className="w-3 h-3" />
-                                                    </button>
+                                                    {q.result.includes('Passed') ? (
+                                                        <span className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-600 text-xs font-black uppercase tracking-widest">
+                                                            ✓ Passed
+                                                        </span>
+                                                    ) : (
+                                                        <button className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-slate-100 text-slate-400 text-xs font-black uppercase tracking-widest hover:border-rose-100 hover:text-rose-500 transition-all">
+                                                            ✕ Review <ChevronRight className="w-3 h-3" />
+                                                        </button>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))}
@@ -219,11 +376,11 @@ export default function Progress() {
                                     </div>
 
                                     <div className="space-y-3">
-                                        {item.rounds.map((r, idx) => (
+                                        {item.rounds.map((r: any, idx: number) => (
                                             <div key={idx} className="p-5 rounded-2xl bg-white border-2 border-rose-100/50 flex items-center gap-6 relative overflow-hidden group/round">
                                                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500" />
                                                 <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center">
-                                                    <r.icon className="w-5 h-5" />
+                                                    <Monitor className="w-5 h-5" />
                                                 </div>
                                                 <div className="flex-1">
                                                     <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none mb-1">{r.type}</h4>
@@ -254,8 +411,11 @@ export default function Progress() {
                                 Based on your recent quiz and interview performance, we've identified key patterns in your learning curve. Check out your personalized improvement strategy.
                             </p>
                         </div>
-                        <Button className="h-16 px-10 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-black shadow-xl shrink-0 group">
-                            Unlock Analytics <ArrowUpRight className="ml-2 w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                        <Button
+                            onClick={() => window.location.href = '/career-intelligence'}
+                            className="h-16 px-10 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-black shadow-xl shrink-0 group"
+                        >
+                            View Roadmap <ArrowUpRight className="ml-2 w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                         </Button>
                     </Card>
                 </main>

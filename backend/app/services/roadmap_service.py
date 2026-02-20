@@ -1,0 +1,245 @@
+"""
+AI Roadmap Engine — generates personalized skill roadmaps.
+Uses existing AIService (ai_hub) for LLM calls.
+"""
+import json
+import uuid
+import logging
+from typing import List, Optional
+from sqlalchemy.orm import Session
+from app.services.ai_service import ai_hub
+from app.models.career import Roadmap
+
+logger = logging.getLogger(__name__)
+
+# ─── Pass thresholds per level ────────────────────────────
+PASS_THRESHOLDS = {
+    "Beginner": 70,
+    "Intermediate": 80,
+    "Advanced": 85
+}
+
+
+async def generate_roadmap(
+    user_id: str,
+    target_role: str,
+    current_skills: List[str],
+    skill_gaps: List[str],
+    db: Session
+) -> dict:
+    """
+    Generate a personalized skill roadmap using AI.
+    Persists the result in the database.
+    """
+    system_prompt = (
+        "You are an expert career coach and curriculum designer. "
+        "You build structured learning roadmaps for tech professionals. "
+        "You must NEVER invent fake skills or experience. "
+        "All suggestions must be real, verifiable, and role-specific."
+    )
+
+    prompt = f"""
+    Create a detailed skill learning roadmap for someone targeting the role of "{target_role}".
+
+    Their current skills are: {json.dumps(current_skills)}
+    Their identified skill gaps are: {json.dumps(skill_gaps)}
+
+    Generate a roadmap with exactly 3 levels: Beginner, Intermediate, Advanced.
+
+    For each level, list 3-5 skills that should be learned IN ORDER.
+    Each skill must have:
+    - "id": a unique identifier (use format "skill-<short-slug>")
+    - "name": human-readable skill name
+    - "description": one-sentence description of what to learn
+    - "prerequisites": list of skill IDs that must be completed first (empty for first skills)
+    - "estimated_hours": estimated learning hours (integer)
+    - "order": integer ordering within the level (1-based)
+
+    Rules:
+    - Beginner skills should have NO prerequisites from higher levels
+    - Intermediate skills can depend on Beginner skills
+    - Advanced skills can depend on Intermediate skills
+    - Keep it practical and industry-relevant for {target_role}
+
+    Return ONLY valid JSON in this exact format:
+    {{
+        "levels": [
+            {{
+                "name": "Beginner",
+                "pass_threshold": 70,
+                "skills": [
+                    {{
+                        "id": "skill-html-css",
+                        "name": "HTML & CSS Fundamentals",
+                        "description": "...",
+                        "prerequisites": [],
+                        "estimated_hours": 20,
+                        "order": 1
+                    }}
+                ]
+            }},
+            {{
+                "name": "Intermediate",
+                "pass_threshold": 80,
+                "skills": [...]
+            }},
+            {{
+                "name": "Advanced",
+                "pass_threshold": 85,
+                "skills": [...]
+            }}
+        ]
+    }}
+
+    IMPORTANT: Return ONLY valid JSON. No markdown, no conversational text.
+    """
+
+    try:
+        response = await ai_hub.chat_completion(
+            [{"role": "user", "content": prompt}],
+            system_prompt
+        )
+
+        # Clean the response
+        clean = response.strip()
+        if "```json" in clean:
+            clean = clean.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean:
+            clean = clean.split("```")[1].split("```")[0].strip()
+
+        roadmap_data = json.loads(clean)
+
+        # Add status to each skill: first skill of Beginner is "unlocked", rest are "locked"
+        for level_idx, level in enumerate(roadmap_data.get("levels", [])):
+            for skill_idx, skill in enumerate(level.get("skills", [])):
+                if level_idx == 0 and skill_idx == 0:
+                    skill["status"] = "unlocked"
+                elif level_idx == 0 and not skill.get("prerequisites"):
+                    skill["status"] = "unlocked"
+                else:
+                    skill["status"] = "locked"
+
+        # Persist to database
+        roadmap = Roadmap(
+            user_id=user_id,
+            target_role=target_role,
+            current_skills=current_skills,
+            skill_gaps=skill_gaps,
+            roadmap_data=roadmap_data,
+            is_active=True
+        )
+        db.add(roadmap)
+        db.commit()
+        db.refresh(roadmap)
+
+        return {
+            "id": str(roadmap.id),
+            "target_role": target_role,
+            "roadmap_data": roadmap_data,
+            "created_at": str(roadmap.created_at)
+        }
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse roadmap JSON: {e}")
+        raise ValueError(f"AI returned invalid JSON: {str(e)}")
+    except Exception as e:
+        logger.error(f"Roadmap generation error: {e}")
+        raise
+
+
+def get_user_roadmap(user_id: str, db: Session) -> Optional[dict]:
+    """Get the active roadmap for a user."""
+    roadmap = db.query(Roadmap).filter(
+        Roadmap.user_id == user_id,
+        Roadmap.is_active == True
+    ).order_by(Roadmap.created_at.desc()).first()
+
+    if not roadmap:
+        return None
+
+    return {
+        "id": str(roadmap.id),
+        "target_role": roadmap.target_role,
+        "current_skills": roadmap.current_skills,
+        "skill_gaps": roadmap.skill_gaps,
+        "roadmap_data": roadmap.roadmap_data,
+        "created_at": str(roadmap.created_at),
+        "updated_at": str(roadmap.updated_at)
+    }
+
+
+def update_skill_status(
+    user_id: str,
+    roadmap_id: str,
+    skill_id: str,
+    new_status: str,
+    db: Session
+) -> dict:
+    """
+    Update a skill's status in the roadmap.
+    When a skill is completed, unlock dependent skills.
+    """
+    roadmap = db.query(Roadmap).filter(
+        Roadmap.id == roadmap_id,
+        Roadmap.user_id == user_id
+    ).first()
+
+    if not roadmap:
+        raise ValueError("Roadmap not found")
+
+    data = roadmap.roadmap_data
+    skill_found = False
+
+    for level in data.get("levels", []):
+        for skill in level.get("skills", []):
+            if skill["id"] == skill_id:
+                skill["status"] = new_status
+                skill_found = True
+                break
+
+    if not skill_found:
+        raise ValueError(f"Skill {skill_id} not found in roadmap")
+
+    # If skill was completed, unlock dependent skills
+    if new_status == "completed":
+        for level in data.get("levels", []):
+            for skill in level.get("skills", []):
+                if skill["status"] == "locked":
+                    prereqs = skill.get("prerequisites", [])
+                    if skill_id in prereqs:
+                        # Check if ALL prerequisites are completed
+                        all_met = True
+                        for prereq_id in prereqs:
+                            prereq_completed = False
+                            for l in data.get("levels", []):
+                                for s in l.get("skills", []):
+                                    if s["id"] == prereq_id and s["status"] == "completed":
+                                        prereq_completed = True
+                            if not prereq_completed:
+                                all_met = False
+                                break
+                        if all_met:
+                            skill["status"] = "unlocked"
+
+    # Update in DB (force JSONB update)
+    from sqlalchemy.orm.attributes import flag_modified
+    roadmap.roadmap_data = data
+    flag_modified(roadmap, "roadmap_data")
+    db.commit()
+    db.refresh(roadmap)
+
+    return {
+        "id": str(roadmap.id),
+        "roadmap_data": roadmap.roadmap_data
+    }
+
+
+def check_level_completion(roadmap_data: dict, level_name: str) -> bool:
+    """Check if all skills in a given level are completed."""
+    for level in roadmap_data.get("levels", []):
+        if level["name"] == level_name:
+            for skill in level.get("skills", []):
+                if skill["status"] != "completed":
+                    return False
+            return True
+    return False

@@ -13,6 +13,10 @@ app = FastAPI(
 from app.db.session import engine
 from app.db.base_class import Base
 from app.models.user import User # Import to ensure registered
+from app.models.career import (  # New career platform models
+    Roadmap, QuizAttempt, InterviewSession,
+    Opportunity, ProgressSnapshot, LearningCache
+)
 
 # Create tables on startup
 Base.metadata.create_all(bind=engine)
@@ -25,6 +29,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize Background Jobs
+from app.core.background_jobs import setup_background_jobs
+
+@app.on_event("startup")
+async def startup_event():
+    setup_background_jobs()
 
 # Exception Handler for Detailed Logs
 from fastapi import Request
