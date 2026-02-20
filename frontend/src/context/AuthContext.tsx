@@ -36,6 +36,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Unified Supabase Auth Logic
     useEffect(() => {
         let mounted = true;
+        // Track whether initial session has been loaded.
+        // This prevents onAuthStateChange from redirecting to /dashboard
+        // on token refresh / tab re-focus when the user is already on a page.
+        let initialSessionLoaded = false;
 
         const initSession = async () => {
             try {
@@ -89,6 +93,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         setLoading(false);
                     }
                 }
+                // Mark initial session as loaded so onAuthStateChange knows
+                // any future SIGNED_IN events are just token refreshes.
+                initialSessionLoaded = true;
             }
         };
 
@@ -99,12 +106,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log("Auth State Change:", event);
 
             if (event === 'SIGNED_IN' && session) {
+                // Always update the token in localStorage so API calls use the fresh token
                 localStorage.setItem('token', session.access_token);
                 try {
                     const userData = await getMe();
                     setUser(userData);
-                    // Force navigation to dashboard on successful login
-                    navigate('/dashboard');
+
+                    // Only navigate to dashboard on a genuine NEW sign-in,
+                    // NOT on token refresh / tab re-focus.
+                    // A genuine new sign-in means:
+                    //   - The initial session check has completed (initialSessionLoaded), AND
+                    //   - The user was not already set (i.e., they just logged in)
+                    // If initialSessionLoaded is false, this is the OAuth callback flow —
+                    // the user is coming back from Google sign-in, so we should redirect.
+                    // If the user was already set, this is just a token refresh (e.g., tab switch).
+                    const isOAuthCallback = window.location.pathname === '/auth/callback';
+                    const userWasAlreadyLoggedIn = initialSessionLoaded && user !== null;
+
+                    if (!userWasAlreadyLoggedIn || isOAuthCallback) {
+                        navigate('/dashboard');
+                    } else {
+                        console.log("Token refreshed silently — staying on current page.");
+                    }
                 } catch (err: any) {
                     console.error("Backend sync failed on SIGNED_IN:", err);
                     alert("Authentication Error: Failed to sync user with backend. " + (err.response?.data?.detail || err.message));
@@ -115,6 +138,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setUser(null);
                     navigate('/login');
                 }
+            } else if (event === 'TOKEN_REFRESHED' && session) {
+                // Supabase automatically refreshes tokens — just update localStorage silently.
+                // Do NOT navigate or change user state, this preserves the current page.
+                console.log("Token refreshed silently.");
+                localStorage.setItem('token', session.access_token);
             } else if (event === 'SIGNED_OUT') {
                 localStorage.removeItem('token');
                 setUser(null);
