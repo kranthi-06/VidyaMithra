@@ -115,20 +115,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (event === 'SIGNED_IN' && session) {
                 // Always update the token in localStorage so API calls use the fresh token
                 localStorage.setItem('token', session.access_token);
+
+                // CRITICAL: Wait for initSession to finish first.
+                // Without this, on page refresh onAuthStateChange races ahead
+                // and redirects to /dashboard before the initial session is loaded.
+                await sessionPromise;
+
                 try {
                     const userData = await getMe();
                     updateUser(userData);
 
                     // Only navigate to dashboard on a genuine NEW sign-in,
-                    // NOT on token refresh / tab re-focus.
-                    // Use userRef.current (not `user`) to avoid stale closure.
+                    // NOT on token refresh / tab re-focus / page refresh.
                     const isOAuthCallback = window.location.pathname === '/auth/callback';
                     const userWasAlreadyLoggedIn = initialSessionLoaded && userRef.current !== null;
 
-                    if (!userWasAlreadyLoggedIn || isOAuthCallback) {
+                    // If the user is already on a protected page (not login/register/landing),
+                    // they refreshed the page — stay where they are.
+                    const currentPath = window.location.pathname;
+                    const publicPaths = ['/', '/login', '/register', '/verify-email', '/auth/callback'];
+                    const isOnProtectedPage = !publicPaths.includes(currentPath);
+
+                    if (isOAuthCallback) {
                         navigate('/dashboard');
+                    } else if (userWasAlreadyLoggedIn || isOnProtectedPage) {
+                        console.log("Token refreshed or page reloaded — staying on current page.");
                     } else {
-                        console.log("Token refreshed silently — staying on current page.");
+                        navigate('/dashboard');
                     }
                 } catch (err: any) {
                     console.error("Backend sync failed on SIGNED_IN:", err);
