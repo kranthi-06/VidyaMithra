@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { login as loginApi, register as registerApi, getMe, verifyOtp as verifyOtpApi, sendOtp as sendOtpApi } from '../services/auth';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -31,6 +31,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
+    // Ref to track current user state inside closures (avoids stale closure in useEffect)
+    const userRef = useRef<User | null>(null);
+    const updateUser = (u: User | null) => {
+        userRef.current = u;
+        setUser(u);
+    };
+
     // Check for existing token on mount
     // Check for existing token on mount and listen for Supabase auth changes
     // Unified Supabase Auth Logic
@@ -52,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         localStorage.setItem('token', session.access_token);
                         try {
                             const userData = await getMe();
-                            setUser(userData);
+                            updateUser(userData);
                         } catch (err) {
                             console.error("Backend sync failed on mount:", err);
                         }
@@ -63,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         if (localToken && localToken !== 'undefined') {
                             try {
                                 const userData = await getMe();
-                                setUser(userData);
+                                updateUser(userData);
                             } catch (err) {
                                 // Token invalid
                                 localStorage.removeItem('token');
@@ -110,18 +117,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 localStorage.setItem('token', session.access_token);
                 try {
                     const userData = await getMe();
-                    setUser(userData);
+                    updateUser(userData);
 
                     // Only navigate to dashboard on a genuine NEW sign-in,
                     // NOT on token refresh / tab re-focus.
-                    // A genuine new sign-in means:
-                    //   - The initial session check has completed (initialSessionLoaded), AND
-                    //   - The user was not already set (i.e., they just logged in)
-                    // If initialSessionLoaded is false, this is the OAuth callback flow —
-                    // the user is coming back from Google sign-in, so we should redirect.
-                    // If the user was already set, this is just a token refresh (e.g., tab switch).
+                    // Use userRef.current (not `user`) to avoid stale closure.
                     const isOAuthCallback = window.location.pathname === '/auth/callback';
-                    const userWasAlreadyLoggedIn = initialSessionLoaded && user !== null;
+                    const userWasAlreadyLoggedIn = initialSessionLoaded && userRef.current !== null;
 
                     if (!userWasAlreadyLoggedIn || isOAuthCallback) {
                         navigate('/dashboard');
@@ -135,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     // Force logout so they can try again.
                     localStorage.removeItem('token');
                     await supabase.auth.signOut();
-                    setUser(null);
+                    updateUser(null);
                     navigate('/login');
                 }
             } else if (event === 'TOKEN_REFRESHED' && session) {
@@ -145,7 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 localStorage.setItem('token', session.access_token);
             } else if (event === 'SIGNED_OUT') {
                 localStorage.removeItem('token');
-                setUser(null);
+                updateUser(null);
                 navigate('/login');
             }
             // Ensure loading is false after any event
@@ -163,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (response.access_token) {
             localStorage.setItem('token', response.access_token);
             const userData = await getMe();
-            setUser(userData);
+            updateUser(userData);
             navigate('/dashboard');
         }
     };
@@ -180,7 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (response.access_token) {
             localStorage.setItem('token', response.access_token);
             const userData = await getMe();
-            setUser(userData);
+            updateUser(userData);
         }
     };
 
@@ -206,7 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const logout = () => {
         localStorage.removeItem('token');
-        setUser(null);
+        updateUser(null);
         navigate('/login');
     };
 
