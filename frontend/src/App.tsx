@@ -6,6 +6,7 @@ import Register from './pages/Register';
 import VerifyEmail from './pages/VerifyEmail';
 import Dashboard from './pages/Dashboard';
 import Landing from './pages/Landing';
+import AuthCallback from './pages/AuthCallback';
 
 import ResumeBuilder from './pages/ResumeBuilder';
 import CareerIntelligence from './pages/CareerIntelligence';
@@ -26,6 +27,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route
             path="/dashboard"
             element={

@@ -165,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: window.location.origin + '/dashboard', // Or a callback route
+                    redirectTo: window.location.origin + '/auth/callback',
                 },
             });
             if (error) throw error;
