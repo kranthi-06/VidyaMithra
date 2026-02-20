@@ -116,38 +116,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // Always update the token in localStorage so API calls use the fresh token
                 localStorage.setItem('token', session.access_token);
 
-                // CRITICAL: Wait for initSession to finish first.
-                // Without this, on page refresh onAuthStateChange races ahead
-                // and redirects to /dashboard before the initial session is loaded.
-                await sessionPromise;
-
                 try {
                     const userData = await getMe();
                     updateUser(userData);
 
-                    // Only navigate to dashboard on a genuine NEW sign-in,
-                    // NOT on token refresh / tab re-focus / page refresh.
-                    const isOAuthCallback = window.location.pathname === '/auth/callback';
-                    const userWasAlreadyLoggedIn = initialSessionLoaded && userRef.current !== null;
-
-                    // If the user is already on a protected page (not login/register/landing),
-                    // they refreshed the page — stay where they are.
+                    // Decide whether to navigate to dashboard or stay put.
+                    // If the user is already on a protected page, they just refreshed — stay.
+                    // If they're on login/register, this is a fresh login — go to dashboard.
                     const currentPath = window.location.pathname;
                     const publicPaths = ['/', '/login', '/register', '/verify-email', '/auth/callback'];
-                    const isOnProtectedPage = !publicPaths.includes(currentPath);
+                    const isOnPublicPage = publicPaths.includes(currentPath);
+                    const isOAuthCallback = currentPath === '/auth/callback';
 
-                    if (isOAuthCallback) {
+                    if (isOAuthCallback || isOnPublicPage) {
+                        // Fresh sign-in from login/register/OAuth → go to dashboard
                         navigate('/dashboard');
-                    } else if (userWasAlreadyLoggedIn || isOnProtectedPage) {
-                        console.log("Token refreshed or page reloaded — staying on current page.");
                     } else {
-                        navigate('/dashboard');
+                        // User is on a protected page (e.g. /career, /quiz) → page refresh, stay put
+                        console.log("Auth event on protected page — staying on current page.");
                     }
                 } catch (err: any) {
                     console.error("Backend sync failed on SIGNED_IN:", err);
                     alert("Authentication Error: Failed to sync user with backend. " + (err.response?.data?.detail || err.message));
-                    // If sync fails, we must NOT leave the user in a limbo state.
-                    // Force logout so they can try again.
                     localStorage.removeItem('token');
                     await supabase.auth.signOut();
                     updateUser(null);
@@ -155,7 +145,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             } else if (event === 'TOKEN_REFRESHED' && session) {
                 // Supabase automatically refreshes tokens — just update localStorage silently.
-                // Do NOT navigate or change user state, this preserves the current page.
                 console.log("Token refreshed silently.");
                 localStorage.setItem('token', session.access_token);
             } else if (event === 'SIGNED_OUT') {
