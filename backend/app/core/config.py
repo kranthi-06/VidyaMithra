@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
-    YOUTUBE_API_KEY: str = "AIzaSyBuXByecPYNR86t1fkWSF6Y0Mq2YXVyIyE"
+    YOUTUBE_API_KEY: str = ""
     
     # Email
     SMTP_SERVER: str = "smtp.gmail.com"
