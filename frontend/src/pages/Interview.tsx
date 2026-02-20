@@ -586,7 +586,7 @@ export default function Interview() {
                                                 <p className="text-slate-400 text-xl font-medium max-w-2xl mx-auto">We've identified the exact steps you need to take to crush your next interview.</p>
                                                 <div className="flex gap-6 justify-center pt-6">
                                                     <Button
-                                                        onClick={() => window.location.href = '/career-intelligence'}
+                                                        onClick={() => window.location.href = '/career'}
                                                         className="h-16 px-12 bg-[#b195ff] text-white rounded-2xl font-black text-lg hover:bg-[#a284ff] shadow-2xl transition-all"
                                                     >
                                                         Explore Roadmap

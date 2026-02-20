@@ -537,7 +537,7 @@ export default function Quiz() {
                                                 Retry Quiz
                                             </Button>
                                             <Button
-                                                onClick={() => window.location.href = '/career-intelligence'}
+                                                onClick={() => window.location.href = '/career'}
                                                 className="h-14 px-10 rounded-2xl bg-slate-900 text-white font-black shadow-xl hover:bg-black transition-all gap-2"
                                             >
                                                 Back to Roadmap <ArrowRight className="w-5 h-5" />

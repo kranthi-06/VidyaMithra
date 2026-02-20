@@ -412,7 +412,7 @@ export default function Progress() {
                             </p>
                         </div>
                         <Button
-                            onClick={() => window.location.href = '/career-intelligence'}
+                            onClick={() => window.location.href = '/career'}
                             className="h-16 px-10 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-black shadow-xl shrink-0 group"
                         >
                             View Roadmap <ArrowUpRight className="ml-2 w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />

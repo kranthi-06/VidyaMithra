@@ -509,41 +509,58 @@ export default function CareerIntelligence() {
                                                 <div className="flex items-center justify-between mb-6">
                                                     <div className="flex items-center gap-3">
                                                         <BookOpen className="w-6 h-6 text-[#5c52d2]" />
-                                                        <h3 className="text-xl font-[900] text-slate-900">Learning Resources: {selectedSkillForLearn.name}</h3>
+                                                        <h3 className="text-xl font-[900] text-slate-900">Learn: {selectedSkillForLearn.name}</h3>
                                                     </div>
                                                     <button onClick={() => { setSelectedSkillForLearn(null); setLearningResources([]); }} className="text-slate-400 hover:text-slate-600 font-black text-sm">✕ Close</button>
                                                 </div>
                                                 {loadingResources ? (
                                                     <div className="text-center py-12">
                                                         <Loader2 className="w-8 h-8 text-[#5c52d2] animate-spin mx-auto mb-4" />
-                                                        <p className="text-slate-400 font-bold">Finding the best resources...</p>
+                                                        <p className="text-slate-400 font-bold">Fetching real YouTube videos...</p>
                                                     </div>
                                                 ) : learningResources.length > 0 ? (
-                                                    <div className="grid md:grid-cols-2 gap-4">
+                                                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
                                                         {learningResources.map((res: any, idx: number) => (
                                                             <a
                                                                 key={idx}
                                                                 href={res.url}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="p-5 rounded-2xl border-2 border-slate-100 hover:border-purple-200 hover:shadow-lg transition-all block group"
+                                                                className="group rounded-2xl overflow-hidden border-2 border-slate-100 hover:border-purple-300 hover:shadow-xl transition-all block bg-white"
                                                             >
-                                                                <div className="flex items-start gap-4">
-                                                                    <div className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center shrink-0">
-                                                                        <Play className="w-5 h-5" />
+                                                                {/* Thumbnail */}
+                                                                <div className="relative w-full aspect-video bg-slate-100 overflow-hidden">
+                                                                    {res.thumbnail ? (
+                                                                        <img
+                                                                            src={res.thumbnail}
+                                                                            alt={res.title}
+                                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center bg-slate-200">
+                                                                            <Play className="w-10 h-10 text-slate-400" />
+                                                                        </div>
+                                                                    )}
+                                                                    {/* YouTube Play Overlay */}
+                                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                                                                        <div className="w-14 h-14 bg-red-600 rounded-full flex items-center justify-center shadow-xl">
+                                                                            <Play className="w-6 h-6 text-white ml-0.5" />
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="flex-1 min-w-0 space-y-1">
-                                                                        <h4 className="font-black text-slate-900 text-sm leading-tight truncate group-hover:text-[#5c52d2] transition-colors">{res.title}</h4>
-                                                                        <p className="text-[10px] font-bold text-slate-400">{res.channel} • {res.duration}</p>
-                                                                        <p className="text-xs text-slate-400 leading-relaxed">{res.why}</p>
-                                                                    </div>
-                                                                    <ExternalLink className="w-4 h-4 text-slate-300 shrink-0 mt-1" />
+                                                                </div>
+                                                                {/* Info */}
+                                                                <div className="p-4 space-y-1.5">
+                                                                    <h4 className="font-black text-slate-900 text-sm leading-tight line-clamp-2 group-hover:text-[#5c52d2] transition-colors">{res.title}</h4>
+                                                                    <p className="text-[11px] font-bold text-slate-400 truncate">{res.channel}</p>
                                                                 </div>
                                                             </a>
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <p className="text-center py-8 text-slate-400 font-medium">No resources found. Try refreshing.</p>
+                                                    <div className="text-center py-10">
+                                                        <p className="text-slate-400 font-bold text-lg">No videos available right now</p>
+                                                        <p className="text-slate-300 text-sm mt-1">Try again later or search YouTube directly.</p>
+                                                    </div>
                                                 )}
                                             </Card>
                                         </motion.div>

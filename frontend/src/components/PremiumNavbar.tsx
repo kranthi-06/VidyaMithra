@@ -27,7 +27,7 @@ export const PremiumNavbar = () => {
         { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { label: 'Resume', path: '/resume-builder', icon: FileText },
         { label: 'Evaluate', path: '/evaluate', icon: Target },
-        { label: 'Plan', path: '/learning', icon: BookOpen },
+        { label: 'Plan', path: '/career', icon: BookOpen },
         { label: 'Quiz', path: '/quiz', icon: BrainCircuit },
         { label: 'Interview', path: '/interview', icon: Mic2 },
         { label: 'Jobs', path: '/jobs', icon: Briefcase },

@@ -40,7 +40,7 @@ export default function Dashboard() {
     const quickActions = [
         { title: 'Start Career Journey', desc: 'Begin with resume analysis and career planning', icon: FileText, color: 'blue', path: '/resume-builder' },
         { title: 'Skill Evaluation', desc: 'Assess your skills vs job requirements', icon: BarChart2, color: 'green', path: '/evaluate' },
-        { title: 'Learning Plan', desc: 'Get personalized training roadmap', icon: BookOpen, color: 'orange', path: '/learning' },
+        { title: 'Learning Plan', desc: 'Get personalized training roadmap', icon: BookOpen, color: 'orange', path: '/career' },
         { title: 'Practice Quiz', desc: 'Test your knowledge with AI quizzes', icon: BrainCircuit, color: 'purple', path: '/quiz' }
     ];
 
