@@ -10,6 +10,7 @@ import { StepExperience } from './StepExperience';
 import { StepProjects } from './StepProjects';
 import { StepSkills } from './StepSkills';
 import { StepATSPreview } from './StepATSPreview';
+import { StepVisualBuilder } from './StepVisualBuilder';
 import type { BuilderStep, ResumeData } from './types';
 import { defaultResumeData } from './types';
 
@@ -22,7 +23,7 @@ export default function AIBuilder({ onBack }: AIBuilderProps) {
     const [data, setData] = useState<ResumeData>({ ...defaultResumeData });
 
     const update = (partial: Partial<ResumeData>) => setData(prev => ({ ...prev, ...partial }));
-    const next = () => step < 7 && setStep((step + 1) as BuilderStep);
+    const next = () => step < 8 && setStep((step + 1) as BuilderStep);
     const prev = () => step > 1 ? setStep((step - 1) as BuilderStep) : onBack();
 
     const canProceed = () => {
@@ -46,7 +47,7 @@ export default function AIBuilder({ onBack }: AIBuilderProps) {
                     </div>
                     <div>
                         <h1 className="text-lg font-black text-gray-900 tracking-tight">AI Resume Architect</h1>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Step {step} of 7</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Step {step} of 8</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-bold text-[#5c52d2] bg-purple-50 px-3 py-1.5 rounded-xl">
@@ -66,6 +67,7 @@ export default function AIBuilder({ onBack }: AIBuilderProps) {
                         {step === 5 && <StepProjects data={data} onChange={update} />}
                         {step === 6 && <StepSkills data={data} onChange={update} />}
                         {step === 7 && <StepATSPreview data={data} onChange={update} />}
+                        {step === 8 && <StepVisualBuilder data={data} onChange={update} />}
                     </motion.div>
                 </AnimatePresence>
 
@@ -78,13 +80,17 @@ export default function AIBuilder({ onBack }: AIBuilderProps) {
                     >
                         {step === 1 ? '← Back' : 'Previous'}
                     </Button>
-                    {step < 7 ? (
+                    {step < 8 ? (
                         <Button
                             onClick={next}
                             disabled={!canProceed()}
                             className="h-14 px-10 rounded-2xl bg-[#5c52d2] hover:bg-[#4b43b0] text-white font-black group gap-3 shadow-lg shadow-purple-100 disabled:opacity-40"
                         >
-                            Next <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                            {step === 7 ? (
+                                <>Visual Studio <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></>
+                            ) : (
+                                <>Next <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></>
+                            )}
                         </Button>
                     ) : (
                         <div className="text-xs text-gray-400 font-medium">Download your resume above ↑</div>

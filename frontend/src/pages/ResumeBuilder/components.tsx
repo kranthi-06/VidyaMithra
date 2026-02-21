@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
-import { CheckCircle2, Target, User, GraduationCap, Briefcase, Laptop, Wrench, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Target, User, GraduationCap, Briefcase, Laptop, Wrench, ShieldCheck, Palette } from 'lucide-react';
 import type { BuilderStep } from './types';
 import { STEP_CONFIG } from './types';
 
-const ICONS: Record<string, any> = { Target, User, GraduationCap, Briefcase, Laptop, Wrench, ShieldCheck };
+const ICONS: Record<string, any> = { Target, User, GraduationCap, Briefcase, Laptop, Wrench, ShieldCheck, Palette };
 
 export function Stepper({ current }: { current: BuilderStep }) {
     return (

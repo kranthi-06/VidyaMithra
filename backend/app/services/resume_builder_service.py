@@ -240,3 +240,67 @@ async def regenerate_section(section_data: dict, mode: str, target_role: str = "
     """
     response = await ai_hub.chat_completion([{"role": "user", "content": prompt}], SYSTEM_PROMPT)
     return _parse_ai_json(response)
+
+
+async def optimize_full_resume(resume_data: dict, target_role: str = "", template_style: str = "modern") -> dict:
+    """Optimize the entire resume content for a specific template style."""
+    
+    style_instructions = {
+        "modern": "Write in a clean, professional, and concise style. Use modern action verbs. Keep bullets tight and impactful. Focus on measurable outcomes.",
+        "classic": "Write in a formal, traditional business tone. Use complete sentences where appropriate. Maintain conservative professionalism. Suitable for banking, law, and corporate environments.",
+        "creative": "Write in an engaging, expressive style. Use vivid language while remaining professional. Highlight creative problem-solving and innovation. Suitable for design, marketing, and creative roles.",
+        "developer": "Write in a technical, precise style. Emphasize technologies, architectures, and engineering achievements. Use developer-friendly terminology. Include specific technical details.",
+    }
+    
+    instruction = style_instructions.get(template_style, style_instructions["modern"])
+    resume_text = json.dumps(resume_data, indent=2)
+    
+    prompt = f"""
+    Optimize the following complete resume data for maximum professional impact.
+    Target Role: {target_role or 'General'}
+    Writing Style: {instruction}
+    
+    Resume Data:
+    {resume_text[:6000]}
+    
+    CRITICAL RULES:
+    - Do NOT invent any fake experience, skills, or achievements.
+    - Do NOT add information that doesn't exist in the input.
+    - Improve and rewrite professional_summary to be powerful and role-specific.
+    - Rewrite experience descriptions/bullets with strong action verbs and clear impact.
+    - Improve project descriptions to highlight problem-solving and technologies.
+    - Keep all dates, company names, institutions, and factual details UNCHANGED.
+    - Optimize for ATS keyword alignment with the target role.
+    
+    Return the optimized resume in this EXACT JSON format:
+    {{
+        "personal": {{
+            "full_name": "unchanged",
+            "email": "unchanged",
+            "phone": "unchanged",
+            "location": "unchanged",
+            "professional_summary": "improved summary"
+        }},
+        "experience": [
+            {{
+                "title": "unchanged",
+                "organization": "unchanged",
+                "duration": "unchanged",
+                "description": "improved description",
+                "bullets": ["improved bullet 1", "improved bullet 2", "improved bullet 3"]
+            }}
+        ],
+        "projects": [
+            {{
+                "name": "unchanged",
+                "technologies": "unchanged",
+                "description": "improved description"
+            }}
+        ]
+    }}
+    
+    Return ONLY valid JSON. No markdown, no explanations.
+    """
+    response = await ai_hub.chat_completion([{"role": "user", "content": prompt}], SYSTEM_PROMPT)
+    return _parse_ai_json(response)
+

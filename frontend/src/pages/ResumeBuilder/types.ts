@@ -1,4 +1,4 @@
-export type BuilderStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type BuilderStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export interface PersonalInfo {
     full_name: string;
@@ -71,4 +71,5 @@ export const STEP_CONFIG = [
     { id: 5, label: 'Projects', icon: 'Laptop' },
     { id: 6, label: 'Skills', icon: 'Wrench' },
     { id: 7, label: 'ATS & Preview', icon: 'ShieldCheck' },
+    { id: 8, label: 'Visual Studio', icon: 'Palette' },
 ];

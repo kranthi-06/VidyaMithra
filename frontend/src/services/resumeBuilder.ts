@@ -41,3 +41,9 @@ export const regenerateSection = async (data: any) => {
     const response = await api.post('/resume-builder/regenerate', data);
     return response.data;
 };
+
+// Full Resume AI Optimization (for Visual Builder)
+export const optimizeResumeContent = async (data: any) => {
+    const response = await api.post('/resume-builder/optimize', data);
+    return response.data;
+};

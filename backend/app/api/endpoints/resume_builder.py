@@ -164,3 +164,24 @@ async def regenerate_section(
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
+
+
+class OptimizeRequest(BaseModel):
+    resume_data: Dict[str, Any]
+    target_role: str = ""
+    template_style: str = "modern"
+
+
+@router.post("/optimize")
+async def optimize_resume(
+    request: OptimizeRequest,
+    current_user=Depends(deps.get_current_user_optional),
+) -> Any:
+    try:
+        result = await resume_builder_service.optimize_full_resume(
+            request.resume_data, request.target_role, request.template_style
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
+

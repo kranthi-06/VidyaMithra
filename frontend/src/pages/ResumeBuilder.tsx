@@ -99,7 +99,6 @@ export default function ResumeBuilder() {
 
     const resetFlow = () => {
         setStep('selection');
-        setBuilderStep(1);
         setFile(null);
         setAnalysis(null);
         setError('');
@@ -480,7 +479,6 @@ export default function ResumeBuilder() {
                                     </Button>
                                     <Button
                                         onClick={() => {
-                                            setBuilderStep(6);
                                             setStep('builder');
                                         }}
                                         style={{ backgroundColor: selectedTheme === 'indigo' ? '#5c52d2' : selectedTheme === 'blue' ? '#3b82f6' : selectedTheme === 'rose' ? '#f43f5e' : '#334155' }}
