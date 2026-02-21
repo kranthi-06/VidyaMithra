@@ -6,14 +6,14 @@ import {
 } from 'lucide-react';
 import type { ResumeData, PersonalInfo, EducationItem, ExperienceItem, ProjectItem } from './types';
 import { enhancePersonalInfo, enhanceEducation, enhanceExperience, enhanceProjects, enhanceSkills } from '../../services/resumeBuilder';
-import type { TemplateId } from './templates';
+import type { BaseTemplate } from './templates';
 
 type PanelTab = 'personal' | 'education' | 'experience' | 'projects' | 'skills';
 
 interface SidePanelEditorProps {
     data: ResumeData;
     onChange: (d: Partial<ResumeData>) => void;
-    selectedTemplate: TemplateId;
+    selectedTemplate: BaseTemplate;
 }
 
 const TABS: { id: PanelTab; label: string; icon: any }[] = [
@@ -188,8 +188,8 @@ export function SidePanelEditor({ data, onChange, selectedTemplate }: SidePanelE
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-1.5 px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all border-b-2 ${activeTab === tab.id
-                                    ? 'text-[#5c52d2] border-[#5c52d2] bg-purple-50/50'
-                                    : 'text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50'
+                                ? 'text-[#5c52d2] border-[#5c52d2] bg-purple-50/50'
+                                : 'text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50'
                                 }`}
                         >
                             <Icon className="w-3.5 h-3.5" />
