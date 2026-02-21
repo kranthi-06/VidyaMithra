@@ -94,7 +94,7 @@ export function StepVisualBuilder({ data, onChange }: StepVisualBuilderProps) {
     const [optimizing, setOptimizing] = useState(false);
     const [optimized, setOptimized] = useState(false);
     const [previewScale, setPreviewScale] = useState(0.55);
-    const [showPanel, setShowPanel] = useState(true);
+    const [showPanel, setShowPanel] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set(TEMPLATE_CATEGORIES));
     const previewRef = useRef<HTMLDivElement>(null);
@@ -261,8 +261,8 @@ export function StepVisualBuilder({ data, onChange }: StepVisualBuilderProps) {
                                                                 whileTap={{ scale: 0.95 }}
                                                                 onClick={() => { setSelectedId(tmpl.template_id); setOptimized(false); }}
                                                                 className={`relative p-1.5 rounded-xl border-2 text-left transition-all ${isSelected
-                                                                        ? 'border-[#5c52d2] bg-purple-50/50 shadow-md'
-                                                                        : 'border-gray-100 hover:border-gray-200 bg-white'
+                                                                    ? 'border-[#5c52d2] bg-purple-50/50 shadow-md'
+                                                                    : 'border-gray-100 hover:border-gray-200 bg-white'
                                                                     }`}
                                                                 title={`${tmpl.name} — ATS: ${tmpl.ats_priority} — ${tmpl.recommended_for_roles.join(', ')}`}
                                                             >
@@ -276,8 +276,8 @@ export function StepVisualBuilder({ data, onChange }: StepVisualBuilderProps) {
                                                                 </div>
                                                                 <p className="text-[8px] font-bold text-gray-700 truncate leading-tight">{tmpl.name}</p>
                                                                 <span className={`text-[7px] font-bold px-1 py-px rounded ${tmpl.ats_priority === 'high' ? 'bg-emerald-50 text-emerald-500' :
-                                                                        tmpl.ats_priority === 'medium' ? 'bg-amber-50 text-amber-500' :
-                                                                            'bg-gray-50 text-gray-400'
+                                                                    tmpl.ats_priority === 'medium' ? 'bg-amber-50 text-amber-500' :
+                                                                        'bg-gray-50 text-gray-400'
                                                                     }`}>{tmpl.ats_priority}</span>
                                                             </motion.button>
                                                         );
@@ -336,17 +336,6 @@ export function StepVisualBuilder({ data, onChange }: StepVisualBuilderProps) {
                         <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Live Preview & Editor</h3>
                     </div>
                     <div className="flex items-center gap-3">
-                        <motion.button
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setShowPanel(!showPanel)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all ${showPanel
-                                    ? 'bg-[#5c52d2] text-white shadow-md'
-                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                                }`}
-                        >
-                            {showPanel ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
-                            {showPanel ? 'Hide Editor' : 'Show Editor'}
-                        </motion.button>
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] text-gray-400 font-bold">Zoom:</span>
                             <input type="range" min="0.3" max="1" step="0.05" value={previewScale} onChange={e => setPreviewScale(parseFloat(e.target.value))} className="w-20 h-1 accent-[#5c52d2]" />
@@ -392,35 +381,68 @@ export function StepVisualBuilder({ data, onChange }: StepVisualBuilderProps) {
                 </p>
             </div>
 
-            {/* ═══════════════════════════════════════════════ */}
-            {/* STICKY SIDE PANEL — Fixed to viewport right     */}
-            {/* ═══════════════════════════════════════════════ */}
+            {/* ═══════════════════════════════════════════════════ */}
+            {/* FLOATING SIDE PANEL — Compact, on right of screen  */}
+            {/* ═══════════════════════════════════════════════════ */}
             <AnimatePresence>
-                {showPanel && (
+                {showPanel ? (
                     <motion.div
+                        key="editor-panel"
                         initial={{ x: 380, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         exit={{ x: 380, opacity: 0 }}
-                        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                        className="fixed right-0 top-0 h-screen z-50 shadow-2xl"
-                        style={{ width: '360px' }}
+                        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                        className="fixed z-50"
+                        style={{
+                            right: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: '340px',
+                            height: '520px',
+                        }}
                     >
-                        {/* Close handle */}
-                        <button
-                            onClick={() => setShowPanel(false)}
-                            className="absolute -left-8 top-20 w-8 h-12 bg-[#5c52d2] rounded-l-xl flex items-center justify-center text-white shadow-lg hover:bg-[#4a41c0] transition-colors"
-                            title="Hide Editor"
+                        <div className="w-full h-full bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
+                            style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)' }}
                         >
-                            <PanelRightClose className="w-4 h-4" />
-                        </button>
-                        <div className="h-full bg-white border-l border-gray-200">
-                            <SidePanelEditor
-                                data={data}
-                                onChange={onChange}
-                                selectedTemplate={selected.base}
-                            />
+                            {/* Panel Header */}
+                            <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-[#5c52d2] to-[#7c3aed] rounded-t-2xl shrink-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-white text-xs font-black">✏️ Resume Editor</span>
+                                </div>
+                                <button
+                                    onClick={() => setShowPanel(false)}
+                                    className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
+                                    title="Minimize Editor"
+                                >
+                                    <PanelRightClose className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                            {/* Panel Body */}
+                            <div className="flex-1 overflow-hidden">
+                                <SidePanelEditor
+                                    data={data}
+                                    onChange={onChange}
+                                    selectedTemplate={selected.base}
+                                />
+                            </div>
                         </div>
                     </motion.div>
+                ) : (
+                    /* Minimized tab — small button on right side */
+                    <motion.button
+                        key="editor-tab"
+                        initial={{ x: 60, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: 60, opacity: 0 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        onClick={() => setShowPanel(true)}
+                        className="fixed z-50 right-0 bg-gradient-to-r from-[#5c52d2] to-[#7c3aed] text-white rounded-l-2xl shadow-xl hover:shadow-2xl transition-shadow flex items-center gap-2 px-4 py-3"
+                        style={{ top: '50%', transform: 'translateY(-50%)' }}
+                        title="Open Resume Editor"
+                    >
+                        <PanelRightOpen className="w-4 h-4" />
+                        <span className="text-[10px] font-black uppercase tracking-wider">Editor</span>
+                    </motion.button>
                 )}
             </AnimatePresence>
         </SectionCard>
