@@ -250,6 +250,11 @@ async def optimize_full_resume(resume_data: dict, target_role: str = "", templat
         "classic": "Write in a formal, traditional business tone. Use complete sentences where appropriate. Maintain conservative professionalism. Suitable for banking, law, and corporate environments.",
         "creative": "Write in an engaging, expressive style. Use vivid language while remaining professional. Highlight creative problem-solving and innovation. Suitable for design, marketing, and creative roles.",
         "developer": "Write in a technical, precise style. Emphasize technologies, architectures, and engineering achievements. Use developer-friendly terminology. Include specific technical details.",
+        "minimal-ats": "Write in an ultra-concise, keyword-rich style optimized for ATS scanners. Front-load every bullet with a strong action verb. Include industry-standard keywords and quantifiable metrics. Avoid creative language — prioritize clarity and parsability.",
+        "academic": "Write with academic clarity and precision. Emphasize educational achievements, research contributions, and learning outcomes. Use formal academic language. Prioritize education, projects, and coursework relevance.",
+        "executive": "Write in an authoritative leadership tone. Use strategic, results-driven language. Emphasize organizational impact, team leadership, revenue growth, and cross-functional collaboration. Suitable for C-suite and senior management.",
+        "two-column": "Write in a balanced, professional style that works well in compact layouts. Keep bullets concise but meaningful. Balance technical depth with business impact.",
+        "portfolio": "Write in a creative, storytelling style that showcases projects and visual work. Emphasize innovation, creative process, and end-user impact. Use engaging language that sells your creative vision.",
     }
     
     instruction = style_instructions.get(template_style, style_instructions["modern"])
