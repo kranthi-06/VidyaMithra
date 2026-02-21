@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Palette, Download, FileText, FileType2, Eye, Sparkles,
     CheckCircle2, Loader2, Wand2, PanelRightOpen, PanelRightClose,
-    ChevronDown, ChevronRight, Search, Filter
+    ChevronDown, ChevronRight, Search, Filter, GripVertical
 } from 'lucide-react';
 import { SectionCard } from './components';
 import {
@@ -382,32 +382,38 @@ export function StepVisualBuilder({ data, onChange }: StepVisualBuilderProps) {
             </div>
 
             {/* ═══════════════════════════════════════════════════ */}
-            {/* FLOATING SIDE PANEL — Compact, on right of screen  */}
+            {/* FLOATING DRAGGABLE SIDE PANEL                       */}
             {/* ═══════════════════════════════════════════════════ */}
             <AnimatePresence>
                 {showPanel ? (
                     <motion.div
                         key="editor-panel"
-                        initial={{ x: 380, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: 380, opacity: 0 }}
+                        drag
+                        dragMomentum={false}
+                        dragElastic={0}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
                         className="fixed z-50"
                         style={{
-                            right: '12px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
+                            right: '16px',
+                            top: 'calc(50% - 260px)',
                             width: '340px',
                             height: '520px',
                         }}
                     >
                         <div className="w-full h-full bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
-                            style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)' }}
+                            style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(92,82,210,0.12)' }}
                         >
-                            {/* Panel Header */}
-                            <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-[#5c52d2] to-[#7c3aed] rounded-t-2xl shrink-0">
+                            {/* Drag Handle + Header */}
+                            <div
+                                className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-[#5c52d2] to-[#7c3aed] rounded-t-2xl shrink-0 cursor-grab active:cursor-grabbing select-none"
+                            >
                                 <div className="flex items-center gap-2">
+                                    <GripVertical className="w-3.5 h-3.5 text-white/60" />
                                     <span className="text-white text-xs font-black">✏️ Resume Editor</span>
+                                    <span className="text-[9px] text-white/50 font-medium">drag to move</span>
                                 </div>
                                 <button
                                     onClick={() => setShowPanel(false)}

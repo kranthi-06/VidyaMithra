@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     User, GraduationCap, Briefcase, Laptop, Wrench, Sparkles,
-    Loader2, Plus, Trash2, ChevronRight
+    Loader2, Plus, Trash2, ChevronRight, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import type { ResumeData, PersonalInfo, EducationItem, ExperienceItem, ProjectItem } from './types';
 import { enhancePersonalInfo, enhanceEducation, enhanceExperience, enhanceProjects, enhanceSkills } from '../../services/resumeBuilder';
@@ -27,57 +27,111 @@ const TABS: { id: PanelTab; label: string; icon: any }[] = [
 export function SidePanelEditor({ data, onChange, selectedTemplate }: SidePanelEditorProps) {
     const [activeTab, setActiveTab] = useState<PanelTab>('personal');
     const [aiLoading, setAiLoading] = useState<string | null>(null);
+    const [aiMessage, setAiMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    const showMsg = (type: 'success' | 'error', text: string) => {
+        setAiMessage({ type, text });
+        setTimeout(() => setAiMessage(null), 4000);
+    };
 
     const handleAIImprove = async (section: PanelTab) => {
         setAiLoading(section);
+        setAiMessage(null);
         try {
             switch (section) {
                 case 'personal': {
+                    // Backend PersonalInfoRequest: flat fields
                     const result = await enhancePersonalInfo({
-                        personal_info: data.personal,
-                        target_role: data.target_role,
-                        template_style: selectedTemplate,
+                        full_name: data.personal.full_name || '',
+                        email: data.personal.email || '',
+                        phone: data.personal.phone || '',
+                        location: data.personal.location || '',
+                        professional_summary: data.personal.professional_summary || '',
+                        target_role: data.target_role || '',
                     });
                     if (result && !result.error) {
-                        onChange({ personal: { ...data.personal, professional_summary: result.professional_summary || data.personal.professional_summary } });
+                        onChange({
+                            personal: {
+                                ...data.personal,
+                                full_name: result.full_name || data.personal.full_name,
+                                email: result.email || data.personal.email,
+                                phone: result.phone || data.personal.phone,
+                                location: result.location || data.personal.location,
+                                professional_summary: result.professional_summary || data.personal.professional_summary,
+                            }
+                        });
+                        showMsg('success', '✅ Personal info enhanced!');
+                    } else {
+                        showMsg('error', result?.detail || 'Enhancement failed');
                     }
                     break;
                 }
                 case 'education': {
+                    // Backend EducationRequest: { items: [...], target_role }
                     const result = await enhanceEducation({
-                        education: data.education,
-                        target_role: data.target_role,
+                        items: data.education.map(e => ({
+                            degree: e.degree || '',
+                            institution: e.institution || '',
+                            duration: e.duration || '',
+                            description: e.description || '',
+                        })),
+                        target_role: data.target_role || '',
                     });
-                    if (result && !result.error && result.education) {
-                        onChange({ education: result.education });
+                    if (result && !result.error && result.items) {
+                        onChange({ education: result.items });
+                        showMsg('success', '✅ Education enhanced!');
+                    } else {
+                        showMsg('error', result?.detail || 'Enhancement failed');
                     }
                     break;
                 }
                 case 'experience': {
+                    // Backend ExperienceRequest: { items: [...], target_role }
                     const result = await enhanceExperience({
-                        experience: data.experience,
-                        target_role: data.target_role,
-                        template_style: selectedTemplate,
+                        items: data.experience.map(e => ({
+                            title: e.title || '',
+                            organization: e.organization || '',
+                            duration: e.duration || '',
+                            description: (e.bullets && e.bullets.length > 0) ? e.bullets.join('. ') : (e.description || ''),
+                        })),
+                        target_role: data.target_role || '',
                     });
-                    if (result && !result.error && result.experience) {
-                        onChange({ experience: result.experience });
+                    if (result && !result.error && result.items) {
+                        onChange({ experience: result.items });
+                        showMsg('success', '✅ Experience enhanced with bullet points!');
+                    } else {
+                        showMsg('error', result?.detail || 'Enhancement failed');
                     }
                     break;
                 }
                 case 'projects': {
+                    // Backend ProjectRequest: { items: [...], target_role }
                     const result = await enhanceProjects({
-                        projects: data.projects,
-                        target_role: data.target_role,
+                        items: data.projects.map(p => ({
+                            name: p.name || '',
+                            technologies: p.technologies || '',
+                            description: p.description || '',
+                        })),
+                        target_role: data.target_role || '',
                     });
-                    if (result && !result.error && result.projects) {
-                        onChange({ projects: result.projects });
+                    if (result && !result.error && result.items) {
+                        onChange({ projects: result.items });
+                        showMsg('success', '✅ Projects enhanced!');
+                    } else {
+                        showMsg('error', result?.detail || 'Enhancement failed');
                     }
                     break;
                 }
                 case 'skills': {
+                    // Backend SkillsRequest: { raw_skills: "comma string", target_role }
+                    const allSkills = [
+                        ...data.skills.technical_skills,
+                        ...data.skills.tools,
+                        ...data.skills.soft_skills,
+                    ].join(', ');
                     const result = await enhanceSkills({
-                        skills: data.skills,
-                        target_role: data.target_role,
+                        raw_skills: allSkills,
+                        target_role: data.target_role || '',
                     });
                     if (result && !result.error) {
                         onChange({
@@ -88,12 +142,17 @@ export function SidePanelEditor({ data, onChange, selectedTemplate }: SidePanelE
                                 soft_skills: result.soft_skills || data.skills.soft_skills,
                             }
                         });
+                        showMsg('success', '✅ Skills optimized!');
+                    } else {
+                        showMsg('error', result?.detail || 'Enhancement failed');
                     }
                     break;
                 }
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error('AI improve error:', e);
+            const errMsg = e?.response?.data?.detail || e?.message || 'AI service unavailable';
+            showMsg('error', `❌ ${errMsg}`);
         }
         setAiLoading(null);
     };
@@ -178,7 +237,7 @@ export function SidePanelEditor({ data, onChange, selectedTemplate }: SidePanelE
     const labelCls = "text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 block";
 
     return (
-        <div className="h-full flex flex-col bg-gray-50/80 rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="h-full flex flex-col overflow-hidden">
             {/* Tab Bar */}
             <div className="flex border-b border-gray-200 bg-white shrink-0 overflow-x-auto">
                 {TABS.map(tab => {
@@ -187,7 +246,7 @@ export function SidePanelEditor({ data, onChange, selectedTemplate }: SidePanelE
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-1.5 px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all border-b-2 ${activeTab === tab.id
+                            className={`flex items-center gap-1.5 px-3 py-2 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all border-b-2 ${activeTab === tab.id
                                 ? 'text-[#5c52d2] border-[#5c52d2] bg-purple-50/50'
                                 : 'text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50'
                                 }`}
@@ -199,8 +258,8 @@ export function SidePanelEditor({ data, onChange, selectedTemplate }: SidePanelE
                 })}
             </div>
 
-            {/* AI Improve Button — always visible */}
-            <div className="px-3 py-2 border-b border-gray-100 bg-white shrink-0">
+            {/* AI Improve Button */}
+            <div className="px-3 py-2 border-b border-gray-100 bg-white shrink-0 space-y-1.5">
                 <motion.button
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
@@ -214,6 +273,26 @@ export function SidePanelEditor({ data, onChange, selectedTemplate }: SidePanelE
                         <><Sparkles className="w-3 h-3" /> ✨ Improve {TABS.find(t => t.id === activeTab)?.label} with AI</>
                     )}
                 </motion.button>
+                {/* AI Status Message */}
+                <AnimatePresence>
+                    {aiMessage && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold ${aiMessage.type === 'success'
+                                    ? 'bg-emerald-50 text-emerald-600'
+                                    : 'bg-red-50 text-red-500'
+                                }`}
+                        >
+                            {aiMessage.type === 'success'
+                                ? <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                : <AlertCircle className="w-3 h-3 shrink-0" />
+                            }
+                            <span className="truncate">{aiMessage.text}</span>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Tab Content */}
