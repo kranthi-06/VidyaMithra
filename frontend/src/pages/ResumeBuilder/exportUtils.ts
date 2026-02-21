@@ -1,61 +1,192 @@
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle, TabStopPosition, TabStopType } from 'docx';
 import { saveAs } from 'file-saver';
 import type { ResumeData } from './types';
 
 /**
- * Export resume preview as PDF by capturing the rendered HTML template
+ * Export resume as a print-ready PDF.
+ *
+ * Strategy: clone the rendered template into a hidden iframe that has
+ * proper A4 print-CSS, then trigger window.print() inside that iframe.
+ * This gives us:
+ *   • Full-page, A4-sized output
+ *   • Real text (not a screenshot) → ATS-safe, selectable, searchable
+ *   • Correct colors and layouts
+ *   • No dependency on html2canvas (which can't handle all CSS)
  */
-export async function exportToPDF(elementId: string, filename: string = 'resume.pdf'): Promise<void> {
-    const element = document.getElementById(elementId);
-    if (!element) throw new Error('Resume preview element not found');
+export async function exportToPDF(elementId: string, _filename: string = 'resume.pdf'): Promise<void> {
+    const source = document.getElementById(elementId);
+    if (!source) throw new Error('Resume preview element not found');
 
-    // Clone and prepare for capture
-    const clone = element.cloneNode(true) as HTMLElement;
-    clone.style.width = '794px'; // A4 width at 96 DPI
-    clone.style.position = 'absolute';
-    clone.style.left = '-9999px';
-    clone.style.top = '0';
-    document.body.appendChild(clone);
+    // ── 1. Collect all stylesheets from the current page ────────────
+    const styleSheets: string[] = [];
 
-    try {
-        const canvas = await html2canvas(clone, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff',
-            width: 794,
-            windowWidth: 794,
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-
-        const imgWidth = pdfWidth;
-        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-        let heightLeft = imgHeight;
-        let position = 0;
-
-        // First page
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-
-        // Additional pages if needed
-        while (heightLeft > 0) {
-            position -= pdfHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pdfHeight;
+    // Grab all <link rel="stylesheet"> and inline <style> tags
+    document.querySelectorAll('link[rel="stylesheet"], style').forEach(node => {
+        if (node instanceof HTMLLinkElement) {
+            styleSheets.push(`<link rel="stylesheet" href="${node.href}" />`);
+        } else if (node instanceof HTMLStyleElement) {
+            styleSheets.push(`<style>${node.innerHTML}</style>`);
         }
+    });
 
-        pdf.save(filename);
-    } finally {
-        document.body.removeChild(clone);
+    // ── 2. Build print-specific CSS ────────────────────────────────
+    const printCSS = `
+        <style>
+            /* Reset everything for print */
+            @page {
+                size: A4;
+                margin: 0;
+            }
+
+            *, *::before, *::after {
+                box-sizing: border-box;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
+            html, body {
+                width: 210mm;
+                min-height: 297mm;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            body {
+                display: block !important;
+            }
+
+            /* The print container that holds the resume */
+            .resume-print-root {
+                width: 210mm;
+                min-height: 297mm;
+                margin: 0;
+                padding: 0;
+                background: white !important;
+                overflow: visible;
+            }
+
+            /* Reset the resume content to fill the page */
+            .resume-print-root > * {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-height: 297mm;
+                margin: 0 !important;
+                transform: none !important;
+            }
+
+            /* Hide scrollbars, borders, shadows in print */
+            ::-webkit-scrollbar { display: none; }
+
+            @media print {
+                html, body {
+                    width: 210mm;
+                    height: auto;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    overflow: visible !important;
+                }
+
+                .resume-print-root {
+                    width: 210mm;
+                    min-height: 297mm;
+                    padding: 0;
+                    margin: 0;
+                    background: white !important;
+                    page-break-inside: auto;
+                }
+
+                .resume-print-root > * {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    margin: 0 !important;
+                    padding-left: 0 !important;
+                    padding-right: 0 !important;
+                    transform: none !important;
+                    box-shadow: none !important;
+                }
+            }
+        </style>
+    `;
+
+    // ── 3. Clone the resume element ────────────────────────────────
+    const clone = source.cloneNode(true) as HTMLElement;
+
+    // Strip off any inline transforms the preview applied (scaling, etc.)
+    clone.style.transform = 'none';
+    clone.style.width = '100%';
+    clone.style.position = 'static';
+    clone.removeAttribute('id');
+
+    // ── 4. Build the iframe document ───────────────────────────────
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=210mm" />
+            <title>Resume</title>
+            ${styleSheets.join('\n')}
+            ${printCSS}
+        </head>
+        <body>
+            <div class="resume-print-root">
+                ${clone.outerHTML}
+            </div>
+        </body>
+        </html>
+    `;
+
+    // ── 5. Create hidden iframe and inject content ─────────────────
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.left = '-10000px';
+    iframe.style.top = '0';
+    iframe.style.width = '210mm';
+    iframe.style.height = '297mm';
+    iframe.style.border = 'none';
+    iframe.style.opacity = '0';
+    iframe.style.pointerEvents = 'none';
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDoc) {
+        document.body.removeChild(iframe);
+        throw new Error('Could not access iframe document');
     }
+
+    iframeDoc.open();
+    iframeDoc.write(htmlContent);
+    iframeDoc.close();
+
+    // ── 6. Wait for stylesheets to load, then print ────────────────
+    await new Promise<void>((resolve) => {
+        const onReady = () => {
+            setTimeout(() => {
+                try {
+                    iframe.contentWindow?.print();
+                } catch (e) {
+                    console.error('Print failed:', e);
+                    // Fallback: trigger print on main window
+                    window.print();
+                }
+                // Cleanup after a delay to let print dialog finish
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                    resolve();
+                }, 1000);
+            }, 500); // Let CSS settle
+        };
+
+        // Wait for iframe to finish loading
+        iframe.onload = onReady;
+
+        // Fallback if onload doesn't fire
+        setTimeout(onReady, 2000);
+    });
 }
 
 /**

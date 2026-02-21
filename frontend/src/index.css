@@ -193,3 +193,67 @@
     transform: translateY(-20px);
   }
 }
+
+/* ═══════════════════════════════════════════════════════ */
+/* PRINT STYLES — ATS-safe, full-page A4 resume output   */
+/* ═══════════════════════════════════════════════════════ */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 210mm !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide ALL UI chrome during print */
+  nav,
+  header,
+  footer,
+  .no-print,
+  [data-no-print],
+  button:not(.print-keep),
+  .fixed:not(.resume-print-root),
+  [class*="shadow-inner"],
+  [class*="shadow-lg"] {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* The print container itself */
+  .resume-print-root {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    overflow: visible !important;
+    page-break-inside: auto;
+  }
+
+  .resume-print-root>* {
+    width: 100% !important;
+    max-width: 100% !important;
+    transform: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Ensure backgrounds and colors are preserved */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+}
