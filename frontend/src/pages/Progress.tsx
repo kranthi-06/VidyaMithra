@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PremiumNavbar } from '../components/PremiumNavbar';
+import AuthLoadingScreen from '../components/AuthLoadingScreen';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,7 +26,9 @@ import {
     Loader2,
     Shield,
     Sparkles,
-    RefreshCw
+    RefreshCw,
+    Clock,
+    Activity
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { PremiumBackground } from '../components/PremiumBackground';
@@ -141,14 +144,24 @@ export default function Progress() {
     const readinessScore = progressData?.career_readiness_score ?? null;
     const skillCompletion = progressData?.skill_completion_pct ?? 0;
 
+    const overallProgressRate = progressData?.skill_completion_pct !== undefined ? `${Math.round(progressData.skill_completion_pct)}%` : "Not available";
+
+    // Compute total time roughly based on 5 mins per quiz, 15 mins per interview
+    const computeTotalMinutes = () => {
+        const total = (quizTaken * 5) + (interviewsTaken * 15);
+        if (total === 0) return "Not available";
+        const h = Math.floor(total / 60);
+        const m = total % 60;
+        return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    };
+    const totalTimeSpent = computeTotalMinutes();
+
+    const activityRate = (quizTaken + interviewsTaken) > 0 ? `${quizTaken + interviewsTaken} actions recently` : "Not available";
+
     const hasNoActivity = quizTaken === 0 && interviewsTaken === 0 && readinessScore === null && !progressData?.resume_ats_score;
 
     if (isLoading) {
-        return (
-            <div className="min-h-screen font-sans flex items-center justify-center animated-gradient">
-                <Loader2 className="w-10 h-10 text-white animate-spin" />
-            </div>
-        );
+        return <AuthLoadingScreen />;
     }
 
     return (
@@ -221,8 +234,59 @@ export default function Progress() {
                                 </motion.div>
                             )}
 
-                            {/* Top Stats Cards */}
-                            <div className="grid md:grid-cols-3 gap-8">
+                            {/* Main Metrics (Top Row) */}
+                            <div className="grid md:grid-cols-3 gap-8 mb-8">
+                                <Card className="p-10 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[3rem] relative overflow-hidden group border border-white/20">
+                                    <div className="absolute top-0 right-0 p-8">
+                                        <TrendingUp className="w-12 h-12 text-[#5c52d2]/10 rotate-12 transition-transform group-hover:rotate-0" />
+                                    </div>
+                                    <div className="space-y-6">
+                                        <div className="w-12 h-12 bg-[#5c52d2]/10 text-[#5c52d2] rounded-2xl flex items-center justify-center">
+                                            <TrendingUp className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-3">Overall Progress</p>
+                                            <p className="text-4xl font-[900] text-slate-900 tracking-tighter">{overallProgressRate}</p>
+                                            <p className="text-xs font-bold text-slate-400 mt-2">Calculated from Real Activities</p>
+                                        </div>
+                                    </div>
+                                </Card>
+
+                                <Card className="p-10 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[3rem] relative overflow-hidden group border border-white/20">
+                                    <div className="absolute top-0 right-0 p-8">
+                                        <Clock className="w-12 h-12 text-emerald-500/10 rotate-12 transition-transform group-hover:rotate-0" />
+                                    </div>
+                                    <div className="space-y-6">
+                                        <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+                                            <Clock className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-3">Total Time Spent</p>
+                                            <p className="text-4xl font-[900] text-slate-900 tracking-tighter">{totalTimeSpent}</p>
+                                            <p className="text-xs font-bold text-slate-400 mt-2">Estimated Activity Time</p>
+                                        </div>
+                                    </div>
+                                </Card>
+
+                                <Card className="p-10 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[3rem] relative overflow-hidden group border border-white/20">
+                                    <div className="absolute top-0 right-0 p-8">
+                                        <Activity className="w-12 h-12 text-purple-500/10 rotate-12 transition-transform group-hover:rotate-0" />
+                                    </div>
+                                    <div className="space-y-6">
+                                        <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center">
+                                            <Activity className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-3">Activity Rate</p>
+                                            <p className="text-4xl font-[900] text-slate-900 tracking-tighter">{activityRate}</p>
+                                            <p className="text-xs font-bold text-slate-400 mt-2">Frequency of Actions</p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+
+                            {/* Secondary Stats Cards */}
+                            <div className="grid md:grid-cols-3 gap-8 mb-8">
                                 <Card className="p-10 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[3rem] relative overflow-hidden group border border-white/20">
                                     <div className="absolute top-0 right-0 p-8">
                                         <BrainCircuit className="w-12 h-12 text-blue-500/10 rotate-12 transition-transform group-hover:rotate-0" />
