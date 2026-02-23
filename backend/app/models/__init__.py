@@ -1,2 +1,2 @@
-from .user import User, Profile
+from .user import User, Profile, Blacklist
 from .otp import OTP

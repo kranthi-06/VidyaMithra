@@ -1,4 +1,5 @@
 from typing import Generator, Optional
+from datetime import datetime, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
@@ -19,6 +20,21 @@ def get_db() -> Generator:
     finally:
         db.close()
 
+def _get_black_admin_emails() -> list:
+    """Parse BLACK_ADMIN_EMAILS from env config."""
+    raw = settings.BLACK_ADMIN_EMAILS or ""
+    return [e.strip().lower() for e in raw.split(",") if e.strip()]
+
+def _resolve_user_role(user: User) -> str:
+    """
+    Resolve the effective role for a user.
+    BLACK_ADMIN_EMAILS override always takes precedence.
+    """
+    black_emails = _get_black_admin_emails()
+    if user.email and user.email.lower() in black_emails:
+        return "black_admin"
+    return user.role or "user"
+
 def get_current_user(
     db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)
 ) -> User:
@@ -29,7 +45,8 @@ def get_current_user(
             id=guest_id,
             email="guest@vidyamitra.com",
             is_active=True,
-            is_superuser=False
+            is_superuser=False,
+            role="user"
         )
     # Define credential exception generator to allow dynamic details
     def get_credentials_exception(detail_msg: str):
@@ -40,10 +57,6 @@ def get_current_user(
         )
 
     try:
-        # For Supabase Auth, decode without verify if secret mismatch (development mode)
-        # In production, verify_signature MUST be rigorous or use separate verifier for Supabase.
-        # REMOVED algorithms restriction to allow RS256 (Google) or HS256 (Supabase) since we don't verify sig here.
-        # ADDED verify_aud=False because Supabase audience might not match our backend default expectation.
         payload = jwt.decode(token, settings.SECRET_KEY, options={"verify_signature": False, "verify_aud": False})
         print(f"DEBUG: Decoded Payload: {payload}") 
         user_id: str = payload.get("sub")
@@ -60,12 +73,10 @@ def get_current_user(
     # 1. Try finding user by ID (Standard backend flow)
     user = None
     try:
-        # Check if user_id is a valid UUID before querying
         import uuid
         uuid_obj = uuid.UUID(str(user_id))
         user = crud_user.get_user(db, user_id=uuid_obj)
     except (ValueError, TypeError):
-        # user_id is not a UUID (e.g. Google numeric ID), skip strict ID lookup
         pass
     except Exception:
         pass
@@ -74,34 +85,29 @@ def get_current_user(
     if not user and email:
         user = crud_user.get_user_by_email(db, email=email)
         
-    # 3. If still not found, but we have a valid token with email (e.g. Google Login first time)
-    # Auto-provision the user in our public.users table
+    # 3. If still not found, auto-provision
     if not user and email:
         try:
-            # Generate a random password
             import random
             from app.core import security
             random_password =  "".join([str(random.randint(0, 9)) for _ in range(16)])
             hashed_password = security.get_password_hash(random_password)
             
-            # Create user
             from app.models.user import User as UserModel
-            # We use model directly to bypass crud default is_verified=False
             new_user = UserModel(
                 email=email,
                 hashed_password=hashed_password,
                 is_active=True,
-                is_verified=True, # Verified because they have a valid token (e.g. Google)
-                login_type="google_or_supabase"
+                is_verified=True,
+                login_type="google_or_supabase",
+                role="user"
             )
             db.add(new_user)
             db.commit()
             db.refresh(new_user)
             user = new_user
             
-            # Create default profile
             from app.models.user import Profile
-            # Try to get name from token claims?
             full_name = payload.get("user_metadata", {}).get("full_name") or payload.get("name") or email.split("@")[0]
             profile = Profile(id=user.id, full_name=full_name)
             db.add(profile)
@@ -113,7 +119,33 @@ def get_current_user(
 
     if not user:
         raise get_credentials_exception("User not found or validation failed")
-        
+    
+    # ── BLACKLIST CHECK ──────────────────────────────────────
+    # Black admins are NEVER blocked by blacklist
+    effective_role = _resolve_user_role(user)
+    if effective_role != "black_admin" and user.is_blacklisted:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been permanently blocked by admin."
+        )
+    
+    # ── FORCE ROLE SYNC ──────────────────────────────────────
+    # If env override says black_admin but DB differs, fix DB
+    if effective_role == "black_admin" and user.role != "black_admin":
+        user.role = "black_admin"
+        user.is_blacklisted = False  # Safety: never blacklist a black_admin
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    
+    # ── UPDATE LAST ACTIVE ───────────────────────────────────
+    try:
+        user.last_active_at = datetime.now(timezone.utc)
+        db.add(user)
+        db.commit()
+    except Exception:
+        db.rollback()
+    
     return user
 
 def get_current_active_user(
@@ -133,3 +165,37 @@ def get_current_user_optional(
         return get_current_user(db, token)
     except:
         return None
+
+# ══════════════════════════════════════════════════════════════
+# ADMIN DEPENDENCY GUARDS
+# ══════════════════════════════════════════════════════════════
+
+def require_admin(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    """
+    Require role == 'admin' OR 'black_admin'.
+    Used for read-only admin views.
+    """
+    effective_role = _resolve_user_role(current_user)
+    if effective_role not in ("admin", "black_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required."
+        )
+    return current_user
+
+def require_black_admin(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    """
+    Require role == 'black_admin' ONLY.
+    Used for destructive actions: delete, blacklist, promote, demote.
+    """
+    effective_role = _resolve_user_role(current_user)
+    if effective_role != "black_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super admin access required."
+        )
+    return current_user

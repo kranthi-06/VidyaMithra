@@ -24,6 +24,9 @@ class ProfileUpdate(ProfileBase):
 
 class Profile(ProfileBase):
     id: UUID4
+    role: Optional[str] = 'user'
+    is_blacklisted: Optional[bool] = False
+    last_active_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime]
     
@@ -45,6 +48,9 @@ class UserUpdate(UserBase):
 
 class UserInDBBase(UserBase):
     id: Optional[UUID4] = None
+    role: Optional[str] = 'user'
+    is_blacklisted: Optional[bool] = False
+    last_active_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     profile: Optional[Profile] = None
@@ -57,3 +63,43 @@ class User(UserInDBBase):
 
 class UserInDB(UserInDBBase):
     pass
+
+# ── Admin Schemas ──────────────────────────────────────────
+class AdminUserView(BaseModel):
+    id: UUID4
+    email: str
+    role: str
+    is_active: bool
+    is_blacklisted: bool
+    last_active_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    profile: Optional[Profile] = None
+    
+    class Config:
+        from_attributes = True
+
+class BlacklistRequest(BaseModel):
+    user_id: str
+    reason: Optional[str] = "Blacklisted by admin"
+
+class UnblacklistRequest(BaseModel):
+    user_id: str
+
+class PromoteRequest(BaseModel):
+    user_id: str
+
+class DemoteRequest(BaseModel):
+    user_id: str
+
+class DeleteUserRequest(BaseModel):
+    user_id: str
+
+class BlacklistRecord(BaseModel):
+    user_id: UUID4
+    email: str
+    reason: Optional[str] = None
+    blacklisted_at: Optional[datetime] = None
+    blacklisted_by: Optional[UUID4] = None
+    
+    class Config:
+        from_attributes = True

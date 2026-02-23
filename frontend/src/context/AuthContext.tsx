@@ -11,6 +11,9 @@ interface User {
         // Add other profile fields if needed
     };
     is_active?: boolean;
+    role?: 'user' | 'admin' | 'black_admin';
+    is_blacklisted?: boolean;
+    last_active_at?: string;
 }
 
 interface AuthContextType {

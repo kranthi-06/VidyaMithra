@@ -15,7 +15,8 @@ import {
     GraduationCap,
     Menu,
     X,
-    User
+    User,
+    Shield
 } from 'lucide-react';
 
 export const PremiumNavbar = () => {
@@ -33,6 +34,10 @@ export const PremiumNavbar = () => {
         { label: 'Jobs', path: '/jobs', icon: Briefcase },
         { label: 'Progress', path: '/progress', icon: LineChart },
     ];
+
+    if (user?.role === 'admin' || user?.role === 'black_admin') {
+        navItems.push({ label: 'Admin', path: '/admin/users', icon: Shield });
+    }
 
     return (
         <nav className="bg-[#5c52d2] sticky top-0 z-50 shadow-lg border-b border-white/10">

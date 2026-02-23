@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AdminRoute } from './components/AdminRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import VerifyEmail from './pages/VerifyEmail';
@@ -17,6 +18,10 @@ import Interview from './pages/Interview';
 import Jobs from './pages/Jobs';
 import Progress from './pages/Progress';
 import Profile from './pages/Profile';
+
+import AdminDashboard from './pages/AdminDashboard';
+import AdminInactivity from './pages/AdminInactivity';
+import AdminCommandCentre from './pages/AdminCommandCentre';
 
 function App() {
   return (
@@ -109,6 +114,33 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* ── Admin Routes ── */}
+          <Route
+            path="/admin/users"
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/inactivity"
+            element={
+              <AdminRoute>
+                <AdminInactivity />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/command-centre"
+            element={
+              <AdminRoute requireBlackAdmin>
+                <AdminCommandCentre />
+              </AdminRoute>
+            }
+          />
+
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>

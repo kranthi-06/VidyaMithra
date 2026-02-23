@@ -3,7 +3,9 @@ from app.api.endpoints import (
     auth, users, resume, career, learning, interview, quiz, resume_builder,
     # New advanced modules
     roadmap, quiz_gating, learning_content, interview_advanced,
-    opportunities, progress
+    opportunities, progress,
+    # Admin system
+    admin
 )
 
 api_router = APIRouter()
@@ -26,3 +28,5 @@ api_router.include_router(interview_advanced.router, prefix="/interview-advanced
 api_router.include_router(opportunities.router, prefix="/opportunities", tags=["opportunities"])
 api_router.include_router(progress.router, prefix="/progress", tags=["progress"])
 
+# ── Admin system ─────────────────────────────────────────
+api_router.include_router(admin.router, prefix="/admin", tags=["admin"])

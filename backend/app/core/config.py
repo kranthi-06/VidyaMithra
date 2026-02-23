@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     FROM_EMAIL: str = "noreply@example.com"
     
+    # Admin System
+    BLACK_ADMIN_EMAILS: str = ""  # Comma-separated emails for permanent super-admin access
+    
     class Config:
         env_file = ".env"
 

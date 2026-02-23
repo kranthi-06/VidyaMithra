@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 import random
 from app import crud, models, schemas
 from app.api import deps
+from app.api.deps import _get_black_admin_emails
 from app.core import security
 from app.core.config import settings
 from app.services.email_service import send_email_otp
@@ -254,6 +255,28 @@ def login_access_token(
         
     if not user.is_verified:
         raise HTTPException(status_code=400, detail="Email not verified. Please verify your email first.")
+    
+    # ── BLACKLIST CHECK AT LOGIN ──────────────────────────────
+    black_emails = _get_black_admin_emails()
+    is_black_admin = user.email and user.email.lower() in black_emails
+    
+    if not is_black_admin and user.is_blacklisted:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been permanently blocked by admin."
+        )
+    
+    # ── SYNC ROLE FROM ENV ON LOGIN ───────────────────────────
+    if is_black_admin and user.role != "black_admin":
+        user.role = "black_admin"
+        user.is_blacklisted = False
+        db.add(user)
+        db.commit()
+    
+    # Update last_active_at
+    user.last_active_at = datetime.now(timezone.utc)
+    db.add(user)
+    db.commit()
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
@@ -325,6 +348,28 @@ def google_login(
                  user.is_verified = True
                  db.add(user)
                  db.commit()
+        
+        # ── BLACKLIST CHECK AT GOOGLE LOGIN ──────────────────
+        black_emails = _get_black_admin_emails()
+        is_black_admin = user.email and user.email.lower() in black_emails
+        
+        if not is_black_admin and user.is_blacklisted:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account has been permanently blocked by admin."
+            )
+        
+        # Sync role from env
+        if is_black_admin and user.role != "black_admin":
+            user.role = "black_admin"
+            user.is_blacklisted = False
+            db.add(user)
+            db.commit()
+        
+        # Update last_active_at
+        user.last_active_at = datetime.now(timezone.utc)
+        db.add(user)
+        db.commit()
         
         # Determine User ID
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
