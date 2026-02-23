@@ -37,51 +37,15 @@ import {
     getAdvancedInterviewHistory
 } from '../services/careerPlatform';
 
-// Fallback data
-const fallbackQuizHistory = [
-    { date: 'Nov 7, 2025, 04:39 PM', topic: 'JavaScript', diff: 'Easy', score: '60%', result: 'Review' },
-    { date: 'Nov 5, 2025, 11:22 PM', topic: 'JavaScript', diff: 'Hard', score: '33%', result: 'Review' },
-    { date: 'Nov 5, 2025, 11:15 PM', topic: 'C', diff: 'Easy', score: '0%', result: 'Review' },
-    { date: 'Nov 3, 2025, 11:34 PM', topic: 'Python', diff: 'Easy', score: '20%', result: 'Review' },
-    { date: 'Nov 3, 2025, 10:34 PM', topic: 'JavaScript', diff: 'Easy', score: '60%', result: 'Review' },
-    { date: 'Nov 3, 2025, 10:02 PM', topic: 'JavaScript', diff: 'Easy', score: '20%', result: 'Review' },
-    { date: 'Nov 3, 2025, 09:29 PM', topic: 'JavaScript', diff: 'Easy', score: '40%', result: 'Review' },
-    { date: 'Nov 3, 2025, 04:43 PM', topic: 'JavaScript', diff: 'Easy', score: '20%', result: 'Review' },
-];
-
-const fallbackInterviewHistory = [
-    {
-        role: 'Software Engineer',
-        date: 'Nov 3, 2025, 11:37 PM',
-        overall: '5%',
-        rounds: [
-            { type: 'TECHNICAL', time: '1m 58s', score: '5%', icon: Monitor }
-        ]
-    },
-    {
-        role: 'AI Developer',
-        date: 'Nov 3, 2025, 10:36 PM',
-        overall: '4%',
-        rounds: [
-            { type: 'TECHNICAL', time: '1m 6s', score: '4%', icon: Monitor }
-        ]
-    },
-    {
-        role: 'AI',
-        date: 'Nov 3, 2025, 10:11 PM',
-        overall: '7%',
-        rounds: [
-            { type: 'TECHNICAL', time: '1m 12s', score: '7%', icon: Monitor }
-        ]
-    }
-];
-
 export default function Progress() {
-    const [quizHistory, setQuizHistory] = useState<any[]>(fallbackQuizHistory);
-    const [interviewHistory, setInterviewHistory] = useState<any[]>(fallbackInterviewHistory);
+    const [quizHistory, setQuizHistory] = useState<any[]>([]);
+    const [interviewHistory, setInterviewHistory] = useState<any[]>([]);
     const [progressData, setProgressData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Popup state
+    const [selectedQuiz, setSelectedQuiz] = useState<any>(null);
 
     useEffect(() => {
         loadAllData();
@@ -118,12 +82,15 @@ export default function Progress() {
                     topic: a.skill_name,
                     diff: a.level || 'Easy',
                     score: `${a.score}%`,
-                    result: a.passed ? 'Passed ✓' : 'Review'
+                    result: a.passed ? 'Passed ✓' : 'Review',
+                    raw: a
                 }));
                 setQuizHistory(mapped);
+            } else {
+                setQuizHistory([]);
             }
         } catch (e) {
-            // Keep fallback data
+            setQuizHistory([]);
         }
     };
 
@@ -140,12 +107,15 @@ export default function Progress() {
                     overall: `${s.overall_score || 0}%`,
                     rounds: [
                         { type: (s.round_type || 'TECHNICAL').toUpperCase(), time: s.duration || 'N/A', score: `${s.overall_score || 0}%`, icon: Monitor }
-                    ]
+                    ],
+                    raw: s
                 }));
                 setInterviewHistory(mapped);
+            } else {
+                setInterviewHistory([]);
             }
         } catch (e) {
-            // Keep fallback data
+            setInterviewHistory([]);
         }
     };
 
@@ -161,15 +131,25 @@ export default function Progress() {
         }
     };
 
-    // Computed stats from dynamic data or fallback
-    const quizAvgScore = progressData?.quiz_avg_score ?? 32;
+    // Computed stats EXACTLY matching REAL dynamics
+    const quizAvgScore = progressData?.quiz_avg_score ?? 0;
     const quizTaken = progressData?.total_quizzes ?? quizHistory.length;
     const quizPassed = progressData?.quizzes_passed ?? 0;
-    const interviewAvgScore = progressData?.interview_avg_score ?? 5;
+    const interviewAvgScore = progressData?.interview_avg_score ?? 0;
     const interviewsPassed = progressData?.interviews_passed ?? 0;
     const interviewsTaken = interviewHistory.length;
     const readinessScore = progressData?.career_readiness_score ?? null;
     const skillCompletion = progressData?.skill_completion_pct ?? 0;
+
+    const hasNoActivity = quizTaken === 0 && interviewsTaken === 0 && readinessScore === null && !progressData?.resume_ats_score;
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen font-sans flex items-center justify-center animated-gradient">
+                <Loader2 className="w-10 h-10 text-white animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen font-sans pb-20 overflow-x-hidden relative animated-gradient">
@@ -193,232 +173,290 @@ export default function Progress() {
                         </Button>
                     </div>
 
-                    {/* Career Readiness Score (NEW) */}
-                    {readinessScore !== null && (
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                            <Card className="p-10 border-none shadow-2xl bg-gradient-to-r from-[#5c52d2] to-[#7c3aed] rounded-[3rem] text-white relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-                                <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
-                                    <div className="w-32 h-32 bg-white/10 rounded-[2.5rem] flex items-center justify-center shrink-0 backdrop-blur-sm border border-white/20">
-                                        <div className="text-center">
-                                            <p className="text-5xl font-[900] tracking-tighter">{Math.round(readinessScore)}%</p>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-3 flex-1 text-center md:text-left">
-                                        <div className="flex items-center gap-2 justify-center md:justify-start">
-                                            <Sparkles className="w-5 h-5" />
-                                            <h3 className="text-2xl font-[900] tracking-tight">Career Readiness Score</h3>
-                                        </div>
-                                        <p className="text-white/70 text-sm font-medium leading-relaxed">
-                                            AI-calculated based on your resume quality, skill completion ({Math.round(skillCompletion)}%), quiz performance, and interview results.
-                                        </p>
-                                        <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden max-w-md">
-                                            <motion.div
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${readinessScore}%` }}
-                                                transition={{ duration: 1, delay: 0.3 }}
-                                                className="h-full bg-white/40 rounded-full"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </Card>
-                        </motion.div>
-                    )}
-
-                    {/* Top Stats Cards */}
-                    <div className="grid md:grid-cols-3 gap-8">
-                        <Card className="p-10 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[3rem] relative overflow-hidden group border border-white/20">
-                            <div className="absolute top-0 right-0 p-8">
-                                <BrainCircuit className="w-12 h-12 text-blue-500/10 rotate-12 transition-transform group-hover:rotate-0" />
+                    {hasNoActivity ? (
+                        <div className="text-center py-24 px-6 bg-white/50 backdrop-blur shadow-xl rounded-[3rem] border border-white/40 max-w-2xl mx-auto mt-20 border-b-white">
+                            <div className="w-24 h-24 bg-slate-100 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner shadow-slate-200/50">
+                                <Rocket className="w-10 h-10 text-slate-400" />
                             </div>
-                            <div className="space-y-6">
-                                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
-                                    <Target className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-3">Quiz Performance</p>
-                                    <p className="text-4xl font-[900] text-slate-900 tracking-tighter">{quizAvgScore}%</p>
-                                    <p className="text-xs font-bold text-slate-400 mt-2">Average Score</p>
-                                </div>
-                                <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
-                                    <motion.div initial={{ width: 0 }} animate={{ width: `${quizAvgScore}%` }} className="h-full bg-blue-500 rounded-full" />
-                                </div>
-                                <p className="text-[10px] font-bold text-slate-400">{quizPassed} out of {quizTaken} quizzes passed</p>
-                            </div>
-                        </Card>
-
-                        <Card className="p-10 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[3rem] relative overflow-hidden group border border-white/20">
-                            <div className="absolute top-0 right-0 p-8">
-                                <Flame className="w-12 h-12 text-orange-500/10 rotate-12 transition-transform group-hover:rotate-0" />
-                            </div>
-                            <div className="space-y-6">
-                                <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center">
-                                    <HistoryIcon className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-3">Quizzes Taken</p>
-                                    <p className="text-4xl font-[900] text-slate-900 tracking-tighter">{quizTaken}</p>
-                                    <p className="text-xs font-bold text-slate-400 mt-2">Current Count</p>
-                                </div>
-                                <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
-                                    <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(quizTaken * 10, 100)}%` }} className="h-full bg-orange-500 rounded-full" />
-                                </div>
-                                <p className="text-[10px] font-bold text-slate-400">Total attempts across all topics</p>
-                            </div>
-                        </Card>
-
-                        <Card className="p-10 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[3rem] relative overflow-hidden group border border-white/20">
-                            <div className="absolute top-0 right-0 p-8">
-                                <Mic2 className="w-12 h-12 text-rose-500/10 rotate-12 transition-transform group-hover:rotate-0" />
-                            </div>
-                            <div className="space-y-6">
-                                <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center">
-                                    <Zap className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-3">Interview Score</p>
-                                    <p className="text-4xl font-[900] text-slate-900 tracking-tighter">{interviewAvgScore}%</p>
-                                    <p className="text-xs font-bold text-slate-400 mt-2">Average Score</p>
-                                </div>
-                                <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
-                                    <motion.div initial={{ width: 0 }} animate={{ width: `${interviewAvgScore}%` }} className="h-full bg-rose-500 rounded-full" />
-                                </div>
-                                <p className="text-[10px] font-bold text-slate-400">{interviewsPassed} out of {interviewsTaken} interviews passed</p>
-                            </div>
-                        </Card>
-                    </div>
-
-                    {/* Quiz History Section */}
-                    <div className="space-y-8">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
-                                <BarChart3 className="w-5 h-5 text-slate-900" />
-                            </div>
-                            <h2 className="text-3xl font-[900] text-slate-900 tracking-tight">Quiz History</h2>
+                            <h2 className="text-3xl font-[900] text-slate-900 tracking-tight">No activity yet.</h2>
+                            <p className="text-slate-500 mt-4 text-lg font-medium leading-relaxed max-w-md mx-auto">
+                                Start learning, take a skills quiz, or practice an interview to see your detailed progress unlocked here.
+                            </p>
+                            <Button onClick={() => window.location.href = '/quiz'} className="mt-10 h-14 px-10 bg-gradient-to-r from-[#5c52d2] to-[#7c3aed] text-white font-black rounded-2xl shadow-xl shadow-purple-200 hover:scale-105 transition-transform">
+                                Take a Knowledge Quiz
+                            </Button>
                         </div>
-
-                        <Card className="border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[2.5rem] overflow-hidden border border-white/20">
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead>
-                                        <tr className="bg-[#5c52d2] text-white">
-                                            <th className="px-8 py-6 text-left text-xs font-black uppercase tracking-widest">Date</th>
-                                            <th className="px-8 py-6 text-left text-xs font-black uppercase tracking-widest">Topic</th>
-                                            <th className="px-8 py-6 text-left text-xs font-black uppercase tracking-widest">Difficulty</th>
-                                            <th className="px-8 py-6 text-left text-xs font-black uppercase tracking-widest">Score</th>
-                                            <th className="px-8 py-6 text-left text-xs font-black uppercase tracking-widest">Result</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-50">
-                                        {quizHistory.map((q, i) => (
-                                            <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
-                                                <td className="px-8 py-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <Calendar className="w-4 h-4 text-slate-300" />
-                                                        <span className="text-sm font-bold text-slate-500">{q.date}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <span className="text-sm font-black text-slate-900">{q.topic}</span>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${q.diff === 'Hard' ? 'bg-rose-50 text-rose-500'
-                                                        : q.diff === 'Medium' ? 'bg-orange-50 text-orange-500'
-                                                            : 'bg-blue-50 text-blue-500'
-                                                        }`}>
-                                                        {q.diff}
-                                                    </span>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <span className="text-sm font-black text-slate-900">{q.score}</span>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    {q.result.includes('Passed') ? (
-                                                        <span className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-600 text-xs font-black uppercase tracking-widest">
-                                                            ✓ Passed
-                                                        </span>
-                                                    ) : (
-                                                        <button className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-slate-100 text-slate-400 text-xs font-black uppercase tracking-widest hover:border-rose-100 hover:text-rose-500 transition-all">
-                                                            ✕ Review <ChevronRight className="w-3 h-3" />
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </Card>
-                    </div>
-
-                    {/* Interview Practice History */}
-                    <div className="space-y-8">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center">
-                                <Mic2 className="w-5 h-5" />
-                            </div>
-                            <h2 className="text-3xl font-[900] text-slate-900 tracking-tight">Interview Practice History</h2>
-                        </div>
-
-                        <div className="space-y-6">
-                            {interviewHistory.map((item, i) => (
-                                <Card key={i} className="p-8 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[2.5rem] space-y-6 group hover:shadow-xl hover:shadow-rose-100/30 transition-all border border-white/20">
-                                    <div className="flex justify-between items-start">
-                                        <div className="space-y-1">
-                                            <h3 className="text-2xl font-[900] text-slate-900 tracking-tight group-hover:text-rose-500 transition-colors">{item.role}</h3>
-                                            <p className="text-xs font-bold text-slate-400">{item.date}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-3xl font-[900] text-rose-500 tracking-tighter">{item.overall}</p>
-                                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">0/1 rounds passed</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        {item.rounds.map((r: any, idx: number) => (
-                                            <div key={idx} className="p-5 rounded-2xl bg-white border-2 border-rose-100/50 flex items-center gap-6 relative overflow-hidden group/round">
-                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500" />
-                                                <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center">
-                                                    <Monitor className="w-5 h-5" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none mb-1">{r.type}</h4>
-                                                    <p className="text-xs font-bold text-slate-400">{r.time}</p>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <span className="text-lg font-black text-rose-500">{r.score}</span>
-                                                    <div className="w-8 h-8 rounded-full border-2 border-slate-100 flex items-center justify-center text-slate-300 group-hover/round:border-rose-200 group-hover/round:text-rose-500 transition-all">
-                                                        ✕
-                                                    </div>
+                    ) : (
+                        <>
+                            {/* Career Readiness Score (NEW) */}
+                            {readinessScore !== null && (
+                                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                                    <Card className="p-10 border-none shadow-2xl bg-gradient-to-r from-[#5c52d2] to-[#7c3aed] rounded-[3rem] text-white relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                                        <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
+                                            <div className="w-32 h-32 bg-white/10 rounded-[2.5rem] flex items-center justify-center shrink-0 backdrop-blur-sm border border-white/20">
+                                                <div className="text-center">
+                                                    <p className="text-5xl font-[900] tracking-tighter">{Math.round(readinessScore)}%</p>
                                                 </div>
                                             </div>
-                                        ))}
+                                            <div className="space-y-3 flex-1 text-center md:text-left">
+                                                <div className="flex items-center gap-2 justify-center md:justify-start">
+                                                    <Sparkles className="w-5 h-5" />
+                                                    <h3 className="text-2xl font-[900] tracking-tight">Career Readiness Score</h3>
+                                                </div>
+                                                <p className="text-white/70 text-sm font-medium leading-relaxed">
+                                                    AI-calculated based on your resume quality, skill completion ({Math.round(skillCompletion)}%), quiz performance, and interview results.
+                                                </p>
+                                                <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden max-w-md">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${readinessScore}%` }}
+                                                        transition={{ duration: 1, delay: 0.3 }}
+                                                        className="h-full bg-white/40 rounded-full"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                </motion.div>
+                            )}
+
+                            {/* Top Stats Cards */}
+                            <div className="grid md:grid-cols-3 gap-8">
+                                <Card className="p-10 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[3rem] relative overflow-hidden group border border-white/20">
+                                    <div className="absolute top-0 right-0 p-8">
+                                        <BrainCircuit className="w-12 h-12 text-blue-500/10 rotate-12 transition-transform group-hover:rotate-0" />
+                                    </div>
+                                    <div className="space-y-6">
+                                        <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
+                                            <Target className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-3">Quiz Performance</p>
+                                            <p className="text-4xl font-[900] text-slate-900 tracking-tighter">{quizAvgScore}%</p>
+                                            <p className="text-xs font-bold text-slate-400 mt-2">Average Score</p>
+                                        </div>
+                                        <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
+                                            <motion.div initial={{ width: 0 }} animate={{ width: `${quizAvgScore}%` }} className="h-full bg-blue-500 rounded-full" />
+                                        </div>
+                                        <p className="text-[10px] font-bold text-slate-400">{quizPassed} out of {quizTaken} quizzes passed</p>
                                     </div>
                                 </Card>
-                            ))}
-                        </div>
-                    </div>
 
-                    {/* Footer Insight */}
-                    <Card className="p-10 border-none shadow-2xl shadow-blue-100/50 bg-white/90 backdrop-blur-sm rounded-[3rem] flex flex-col md:flex-row items-center gap-10 border border-white/20">
-                        <div className="w-24 h-24 bg-blue-50 text-blue-500 rounded-[2.5rem] flex items-center justify-center shrink-0">
-                            <Rocket className="w-12 h-12" />
-                        </div>
-                        <div className="space-y-4 flex-1 text-center md:text-left">
-                            <h3 className="text-3xl font-[900] text-slate-900 tracking-tight">Growth Insight Available</h3>
-                            <p className="text-slate-500 text-lg font-medium leading-relaxed">
-                                Based on your recent quiz and interview performance, we've identified key patterns in your learning curve. Check out your personalized improvement strategy.
-                            </p>
-                        </div>
-                        <Button
-                            onClick={() => window.location.href = '/career'}
-                            className="h-16 px-10 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-black shadow-xl shrink-0 group"
-                        >
-                            View Roadmap <ArrowUpRight className="ml-2 w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                        </Button>
-                    </Card>
+                                <Card className="p-10 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[3rem] relative overflow-hidden group border border-white/20">
+                                    <div className="absolute top-0 right-0 p-8">
+                                        <Flame className="w-12 h-12 text-orange-500/10 rotate-12 transition-transform group-hover:rotate-0" />
+                                    </div>
+                                    <div className="space-y-6">
+                                        <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center">
+                                            <HistoryIcon className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-3">Quizzes Taken</p>
+                                            <p className="text-4xl font-[900] text-slate-900 tracking-tighter">{quizTaken}</p>
+                                            <p className="text-xs font-bold text-slate-400 mt-2">Current Count</p>
+                                        </div>
+                                        <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
+                                            <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(quizTaken * 10, 100)}%` }} className="h-full bg-orange-500 rounded-full" />
+                                        </div>
+                                        <p className="text-[10px] font-bold text-slate-400">Total attempts across all topics</p>
+                                    </div>
+                                </Card>
+
+                                <Card className="p-10 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[3rem] relative overflow-hidden group border border-white/20">
+                                    <div className="absolute top-0 right-0 p-8">
+                                        <Mic2 className="w-12 h-12 text-rose-500/10 rotate-12 transition-transform group-hover:rotate-0" />
+                                    </div>
+                                    <div className="space-y-6">
+                                        <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center">
+                                            <Zap className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-3">Interview Score</p>
+                                            <p className="text-4xl font-[900] text-slate-900 tracking-tighter">{interviewAvgScore}%</p>
+                                            <p className="text-xs font-bold text-slate-400 mt-2">Average Score</p>
+                                        </div>
+                                        <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
+                                            <motion.div initial={{ width: 0 }} animate={{ width: `${interviewAvgScore}%` }} className="h-full bg-rose-500 rounded-full" />
+                                        </div>
+                                        <p className="text-[10px] font-bold text-slate-400">{interviewsPassed} out of {interviewsTaken} interviews passed</p>
+                                    </div>
+                                </Card>
+                            </div>
+
+                            {/* Quiz History Section */}
+                            <div className="space-y-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
+                                        <BarChart3 className="w-5 h-5 text-slate-900" />
+                                    </div>
+                                    <h2 className="text-3xl font-[900] text-slate-900 tracking-tight">Quiz History</h2>
+                                </div>
+
+                                <Card className="border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[2.5rem] overflow-hidden border border-white/20">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="bg-[#5c52d2] text-white">
+                                                    <th className="px-8 py-6 text-left text-xs font-black uppercase tracking-widest">Date</th>
+                                                    <th className="px-8 py-6 text-left text-xs font-black uppercase tracking-widest">Topic</th>
+                                                    <th className="px-8 py-6 text-left text-xs font-black uppercase tracking-widest">Difficulty</th>
+                                                    <th className="px-8 py-6 text-left text-xs font-black uppercase tracking-widest">Score</th>
+                                                    <th className="px-8 py-6 text-left text-xs font-black uppercase tracking-widest">Result</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {quizHistory.map((q, i) => (
+                                                    <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
+                                                        <td className="px-8 py-6">
+                                                            <div className="flex items-center gap-3">
+                                                                <Calendar className="w-4 h-4 text-slate-300" />
+                                                                <span className="text-sm font-bold text-slate-500">{q.date}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-8 py-6">
+                                                            <span className="text-sm font-black text-slate-900">{q.topic}</span>
+                                                        </td>
+                                                        <td className="px-8 py-6">
+                                                            <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${q.diff === 'Hard' ? 'bg-rose-50 text-rose-500'
+                                                                : q.diff === 'Medium' ? 'bg-orange-50 text-orange-500'
+                                                                    : 'bg-blue-50 text-blue-500'
+                                                                }`}>
+                                                                {q.diff}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-8 py-6">
+                                                            <span className="text-sm font-black text-slate-900">{q.score}</span>
+                                                        </td>
+                                                        <td className="px-8 py-6 flex items-center gap-3">
+                                                            {q.result.includes('Passed') ? (
+                                                                <span className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-600 text-xs font-black uppercase tracking-widest whitespace-nowrap">
+                                                                    ✓ Passed
+                                                                </span>
+                                                            ) : (
+                                                                <span className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-50 text-rose-600 text-xs font-black uppercase tracking-widest whitespace-nowrap">
+                                                                    ✕ Failed
+                                                                </span>
+                                                            )}
+                                                            <button
+                                                                onClick={() => setSelectedQuiz(q)}
+                                                                className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-slate-100 text-slate-400 text-xs font-black uppercase tracking-widest hover:border-[#5c52d2] hover:bg-[#5c52d2]/5 hover:text-[#5c52d2] transition-all whitespace-nowrap"
+                                                            >
+                                                                Review <Search className="w-3 h-3" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </Card>
+                            </div>
+
+                            {/* Interview Practice History */}
+                            <div className="space-y-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center">
+                                        <Mic2 className="w-5 h-5" />
+                                    </div>
+                                    <h2 className="text-3xl font-[900] text-slate-900 tracking-tight">Interview Practice History</h2>
+                                </div>
+
+                                <div className="space-y-6">
+                                    {interviewHistory.map((item, i) => (
+                                        <Card key={i} className="p-8 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[2.5rem] space-y-6 group hover:shadow-xl hover:shadow-rose-100/30 transition-all border border-white/20">
+                                            <div className="flex justify-between items-start">
+                                                <div className="space-y-1">
+                                                    <h3 className="text-2xl font-[900] text-slate-900 tracking-tight group-hover:text-rose-500 transition-colors">{item.role}</h3>
+                                                    <p className="text-xs font-bold text-slate-400">{item.date}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-3xl font-[900] text-rose-500 tracking-tighter">{item.overall}</p>
+                                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">0/1 rounds passed</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                {item.rounds.map((r: any, idx: number) => (
+                                                    <div key={idx} className="p-5 rounded-2xl bg-white border-2 border-rose-100/50 flex items-center gap-6 relative overflow-hidden group/round">
+                                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500" />
+                                                        <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center">
+                                                            <Monitor className="w-5 h-5" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none mb-1">{r.type}</h4>
+                                                            <p className="text-xs font-bold text-slate-400">{r.time}</p>
+                                                        </div>
+                                                        <div className="flex items-center gap-4">
+                                                            <span className="text-lg font-black text-rose-500">{r.score}</span>
+                                                            <div className="w-8 h-8 rounded-full border-2 border-slate-100 flex items-center justify-center text-slate-300 group-hover/round:border-rose-200 group-hover/round:text-rose-500 transition-all">
+                                                                ✕
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Footer Insight */}
+                            <Card className="p-10 border-none shadow-2xl shadow-blue-100/50 bg-white/90 backdrop-blur-sm rounded-[3rem] flex flex-col md:flex-row items-center gap-10 border border-white/20">
+                                <div className="w-24 h-24 bg-blue-50 text-blue-500 rounded-[2.5rem] flex items-center justify-center shrink-0">
+                                    <Rocket className="w-12 h-12" />
+                                </div>
+                                <div className="space-y-4 flex-1 text-center md:text-left">
+                                    <h3 className="text-3xl font-[900] text-slate-900 tracking-tight">Growth Insight Available</h3>
+                                    <p className="text-slate-500 text-lg font-medium leading-relaxed">
+                                        Based on your recent quiz and interview performance, we've identified key patterns in your learning curve. Check out your personalized improvement strategy.
+                                    </p>
+                                </div>
+                                <Button
+                                    onClick={() => window.location.href = '/career'}
+                                    className="h-16 px-10 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-black shadow-xl shrink-0 group"
+                                >
+                                    View Roadmap <ArrowUpRight className="ml-2 w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                </Button>
+                            </Card>
+                        </>
+                    )}
                 </main>
+
+                {/* Quiz Review Modal */}
+                {selectedQuiz && (
+                    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6">
+                        <Card className="max-w-3xl w-full max-h-[85vh] overflow-y-auto bg-white rounded-[2.5rem] p-10 space-y-8 shadow-2xl border-none">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h2 className="text-3xl font-[900] text-slate-900 tracking-tight">Quiz Review</h2>
+                                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">{selectedQuiz.topic} • {selectedQuiz.score} Correct</p>
+                                </div>
+                                <Button variant="ghost" className="rounded-full w-12 h-12 bg-slate-50 hover:bg-slate-100" onClick={() => setSelectedQuiz(null)}>✕</Button>
+                            </div>
+                            <div className="space-y-4 pt-4 border-t border-slate-100">
+                                {selectedQuiz.raw?.questions_data ? selectedQuiz.raw.questions_data.map((q: any, i: number) => (
+                                    <div key={i} className={`p-6 rounded-2xl border-2 ${q.selected === q.correct ? 'border-emerald-100 bg-emerald-50/50' : 'border-rose-100 bg-rose-50/50'}`}>
+                                        <p className="font-[900] text-slate-900 mb-4 text-lg">{i + 1}. {q.question_text}</p>
+                                        <p className={`text-sm font-bold ${q.selected === q.correct ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                            Your Answer: Option {q.selected + 1}
+                                        </p>
+                                        {q.selected !== q.correct && (
+                                            <p className="text-sm font-bold text-emerald-600 mt-2 bg-emerald-100/50 inline-block px-3 py-1.5 rounded-lg border border-emerald-200">
+                                                Correct Answer: Option {q.correct + 1}
+                                            </p>
+                                        )}
+                                    </div>
+                                )) : (
+                                    <div className="text-center py-10 bg-slate-50 rounded-2xl">
+                                        <Search className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                                        <p className="text-slate-500 font-bold">Detailed question data is unavailable for this older attempt.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
+                    </div>
+                )}
             </div>
         </div>
     );

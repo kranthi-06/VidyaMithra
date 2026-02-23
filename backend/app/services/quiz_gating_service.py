@@ -166,7 +166,8 @@ def get_quiz_history(user_id: str, db: Session, skill_id: Optional[str] = None) 
             "passed": a.passed,
             "total_questions": a.total_questions,
             "correct_answers": a.correct_answers,
-            "attempted_at": str(a.attempted_at)
+            "attempted_at": str(a.attempted_at),
+            "questions_data": a.questions_data
         }
         for a in attempts
     ]
