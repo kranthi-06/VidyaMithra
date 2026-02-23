@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { PremiumNavbar } from '../components/PremiumNavbar';
@@ -25,10 +25,58 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router-dom';
+import { getActiveRoadmap } from '../services/careerPlatform';
 
 export default function Dashboard() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const [roadmapProgress, setRoadmapProgress] = useState(0);
+    const [roadmapRole, setRoadmapRole] = useState('Career Plan');
+    const [nextSkill, setNextSkill] = useState('Planning required');
+    const [hasRoadmap, setHasRoadmap] = useState(false);
+
+    useEffect(() => {
+        const fetchRoadmap = async () => {
+            try {
+                const res = await getActiveRoadmap();
+                if (res?.roadmap) {
+                    setHasRoadmap(true);
+                    setRoadmapRole(res.roadmap.target_role || 'Career Plan');
+
+                    if (res.roadmap.roadmap_data && res.roadmap.roadmap_data.levels) {
+                        let totalSkills = 0;
+                        let completedSkills = 0;
+                        let foundNext = false;
+
+                        res.roadmap.roadmap_data.levels.forEach((level: any) => {
+                            if (level.skills) {
+                                level.skills.forEach((skill: any) => {
+                                    totalSkills++;
+                                    if (skill.status === 'completed') {
+                                        completedSkills++;
+                                    } else if (!foundNext && skill.status === 'unlocked') {
+                                        setNextSkill(skill.name);
+                                        foundNext = true;
+                                    }
+                                });
+                            }
+                        });
+
+                        if (totalSkills > 0) {
+                            setRoadmapProgress(Math.round((completedSkills / totalSkills) * 100));
+                        }
+
+                        if (!foundNext && completedSkills > 0) {
+                            setNextSkill('All skills completed!');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching roadmap:', error);
+            }
+        };
+        fetchRoadmap();
+    }, []);
 
     const stats = [
         { label: 'Skills Assessed', val: '12', sub: '+3 this week', icon: Zap, color: 'blue' },
@@ -120,35 +168,37 @@ export default function Dashboard() {
                     </div>
 
                     <div className="space-y-12">
-                        {/* Resume Progress Summary Card */}
+                        {/* Roadmap Progress Summary Card */}
                         <motion.div
                             whileHover={{ scale: 1.01 }}
-                            onClick={() => navigate('/resume-builder')}
+                            onClick={() => navigate('/career')}
                             className="bg-white/90 backdrop-blur-sm border border-purple-100 shadow-xl hover:shadow-2xl transition-all rounded-[2rem] p-6 lg:p-8 cursor-pointer flex flex-col md:flex-row items-center gap-6 lg:gap-10 overflow-hidden relative group"
                         >
                             <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-colors"></div>
 
                             <div className="w-16 h-16 bg-purple-100 text-[#5c52d2] rounded-2xl flex items-center justify-center flex-shrink-0">
-                                <FileText className="w-8 h-8" />
+                                <Target className="w-8 h-8" />
                             </div>
 
                             <div className="flex-1 w-full space-y-2">
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-xl font-black text-gray-900 group-hover:text-[#5c52d2] transition-colors">
-                                        Resume in Progress
+                                        Roadmap: {hasRoadmap ? roadmapRole : 'Not Started'}
                                     </h3>
-                                    <span className="text-[#5c52d2] font-black">{Math.round((((user as any)?.profile?.resume_step) || ((user as any)?.profile?.resume_completion ? 8 : 1)) / 8 * 100)}%</span>
+                                    <span className="text-[#5c52d2] font-black">{roadmapProgress}%</span>
                                 </div>
                                 <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
                                     <div
                                         className="bg-gradient-to-r from-[#5c52d2] to-[#7c3aed] h-full rounded-full transition-all duration-1000 ease-out"
-                                        style={{ width: `${Math.round((((user as any)?.profile?.resume_step) || ((user as any)?.profile?.resume_completion ? 8 : 1)) / 8 * 100)}%` }}
+                                        style={{ width: `${roadmapProgress}%` }}
                                     ></div>
                                 </div>
                                 <p className="text-sm font-bold text-gray-500 pt-1">
-                                    Current Step: <span className="text-gray-700">
-                                        {["Target Role", "Personal Info", "Education", "Experience", "Projects", "Skills", "ATS Check", "Final Polish"][Math.min((((user as any)?.profile?.resume_step) || ((user as any)?.profile?.resume_completion ? 8 : 1)) - 1, 7)]}
-                                    </span>
+                                    {hasRoadmap ? (
+                                        <>Up Next: <span className="text-gray-700">{nextSkill}</span></>
+                                    ) : (
+                                        <>Get started: <span className="text-gray-700">Generate your career path</span></>
+                                    )}
                                 </p>
                             </div>
 
