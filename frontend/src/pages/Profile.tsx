@@ -45,7 +45,7 @@ function RenderTemplate({ base, data, color }: { base: BaseTemplate; data: Resum
 }
 
 export default function Profile() {
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,19 +68,30 @@ export default function Profile() {
     const [savedResumes, setSavedResumes] = useState<any[]>([]);
     const [loadingResumes, setLoadingResumes] = useState(false);
 
-    // Load profile from localStorage on mount
+    // Refresh user data from backend on page load to guarantee latest skills
+    useEffect(() => {
+        refreshUser();
+    }, []);
+
+    // Load profile from localStorage on mount, then hydrate with DB data
     useEffect(() => {
         if (user?.email) {
             const savedProfile = localStorage.getItem(`user_profile_${user.email}`);
             if (savedProfile) {
                 try {
-                    setProfile(JSON.parse(savedProfile));
+                    const parsed = JSON.parse(savedProfile);
+                    if (user?.profile?.skills) {
+                        parsed.skills = user.profile.skills;
+                    }
+                    setProfile(parsed);
                 } catch (e) {
                     console.error("Failed to parse profile", e);
                 }
+            } else if (user?.profile?.skills) {
+                setProfile(prev => ({ ...prev, skills: user.profile!.skills! }));
             }
         }
-    }, [user?.email]);
+    }, [user?.email, user?.profile?.skills]);
 
     useEffect(() => {
         const fetchSavedResumes = async () => {

@@ -11,6 +11,7 @@ interface User {
         profile_photo_url?: string;
         resume_step?: number;
         resume_completion?: number;
+        skills?: string[];
         // Add other profile fields if needed
     };
     is_active?: boolean;
@@ -28,6 +29,7 @@ interface AuthContextType {
     resendOtp: (email: string) => Promise<void>;
     signInWithGoogle: () => Promise<void>;
     logout: () => void;
+    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -198,6 +200,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await sendOtpApi(email);
     };
 
+    const refreshUser = async () => {
+        try {
+            const userData = await getMe();
+            updateUser(userData);
+        } catch (err) {
+            console.error("Failed to refresh user", err);
+        }
+    };
+
     const signInWithGoogle = async () => {
         try {
             const { data, error } = await supabase.auth.signInWithOAuth({
@@ -229,7 +240,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             verifyOtp,
             resendOtp,
             signInWithGoogle,
-            logout
+            logout,
+            refreshUser
         }}>
             {children}
         </AuthContext.Provider>

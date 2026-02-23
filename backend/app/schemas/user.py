@@ -14,6 +14,7 @@ class ProfileBase(BaseModel):
     phone_number: Optional[str] = None
     bio: Optional[str] = None
     links: Optional[Dict[str, Any]] = {}
+    skills: Optional[List[str]] = []
     activity_log: Optional[List[Dict[str, Any]]] = []
 
 class ProfileCreate(ProfileBase):
