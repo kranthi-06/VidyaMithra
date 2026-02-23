@@ -8,6 +8,9 @@ interface User {
     full_name?: string;
     profile?: {
         full_name?: string;
+        profile_photo_url?: string;
+        resume_step?: number;
+        resume_completion?: number;
         // Add other profile fields if needed
     };
     is_active?: boolean;

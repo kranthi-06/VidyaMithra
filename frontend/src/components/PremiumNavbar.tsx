@@ -88,18 +88,29 @@ export const PremiumNavbar = () => {
                     {/* Right Side Actions */}
                     <div className="flex items-center gap-4">
                         <div className="hidden sm:flex items-center gap-3 pl-6 border-l border-white/10">
-                            <div className="bg-white/10 rounded-full p-0.5 border border-white/10 pr-4 flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-300 to-orange-400 p-0.5">
-                                    <div className="w-full h-full rounded-full bg-[#5c52d2] flex items-center justify-center overflow-hidden">
-                                        {/* Placeholder Avatar */}
-                                        <User size={16} className="text-white" />
+                            <Link to="/profile" className="bg-white/10 hover:bg-white/20 transition-all rounded-full p-0.5 border border-white/10 pr-4 flex items-center gap-3 group cursor-pointer">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-300 to-orange-400 p-0.5 group-hover:scale-105 transition-transform duration-300">
+                                    <div className="w-full h-full rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
+                                        {(user as any)?.profile?.profile_photo_url || localStorage.getItem(`user_profile_${user?.email}`) ? (
+                                            <img
+                                                src={(user as any)?.profile?.profile_photo_url || (localStorage.getItem(`user_profile_${user?.email}`) ? JSON.parse(localStorage.getItem(`user_profile_${user?.email}`)!).image : '')}
+                                                alt="Profile"
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    // fallback if image is broken
+                                                    e.currentTarget.style.display = 'none';
+                                                    e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[#5c52d2]"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+                                                }}
+                                            />
+                                        ) : (
+                                            <User size={16} className="text-[#5c52d2]" />
+                                        )}
                                     </div>
                                 </div>
                                 <div className="text-xs font-bold text-white leading-tight">
                                     <p>{(user?.profile?.full_name || user?.full_name || user?.email?.split('@')[0] || 'User').split(' ')[0]}</p>
-
                                 </div>
-                            </div>
+                            </Link>
                         </div>
 
                         <button

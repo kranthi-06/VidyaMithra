@@ -93,8 +93,20 @@ export default function Dashboard() {
                                 onClick={() => navigate('/profile')}
                                 className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 flex items-center gap-5 w-full md:w-auto min-w-[300px] cursor-pointer hover:bg-white/20 transition-all shadow-lg"
                             >
-                                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center border border-white/10">
-                                    <UserIcon className="w-8 h-8 text-white" />
+                                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center border border-white/10 overflow-hidden">
+                                    {(user as any)?.profile?.profile_photo_url || localStorage.getItem(`user_profile_${user?.email}`) ? (
+                                        <img
+                                            src={(user as any)?.profile?.profile_photo_url || (localStorage.getItem(`user_profile_${user?.email}`) ? JSON.parse(localStorage.getItem(`user_profile_${user?.email}`)!).image : '')}
+                                            alt="Profile"
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                                e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+                                            }}
+                                        />
+                                    ) : (
+                                        <UserIcon className="w-8 h-8 text-white" />
+                                    )}
                                 </div>
                                 <div>
                                     <h4 className="font-black text-xl leading-none mb-1">{user?.profile?.full_name || user?.full_name || 'User'}</h4>
@@ -108,6 +120,43 @@ export default function Dashboard() {
                     </div>
 
                     <div className="space-y-12">
+                        {/* Resume Progress Summary Card */}
+                        <motion.div
+                            whileHover={{ scale: 1.01 }}
+                            onClick={() => navigate('/resume-builder')}
+                            className="bg-white/90 backdrop-blur-sm border border-purple-100 shadow-xl hover:shadow-2xl transition-all rounded-[2rem] p-6 lg:p-8 cursor-pointer flex flex-col md:flex-row items-center gap-6 lg:gap-10 overflow-hidden relative group"
+                        >
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-colors"></div>
+
+                            <div className="w-16 h-16 bg-purple-100 text-[#5c52d2] rounded-2xl flex items-center justify-center flex-shrink-0">
+                                <FileText className="w-8 h-8" />
+                            </div>
+
+                            <div className="flex-1 w-full space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-xl font-black text-gray-900 group-hover:text-[#5c52d2] transition-colors">
+                                        Resume in Progress
+                                    </h3>
+                                    <span className="text-[#5c52d2] font-black">{Math.round((((user as any)?.profile?.resume_step) || ((user as any)?.profile?.resume_completion ? 8 : 1)) / 8 * 100)}%</span>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                                    <div
+                                        className="bg-gradient-to-r from-[#5c52d2] to-[#7c3aed] h-full rounded-full transition-all duration-1000 ease-out"
+                                        style={{ width: `${Math.round((((user as any)?.profile?.resume_step) || ((user as any)?.profile?.resume_completion ? 8 : 1)) / 8 * 100)}%` }}
+                                    ></div>
+                                </div>
+                                <p className="text-sm font-bold text-gray-500 pt-1">
+                                    Current Step: <span className="text-gray-700">
+                                        {["Target Role", "Personal Info", "Education", "Experience", "Projects", "Skills", "ATS Check", "Final Polish"][Math.min((((user as any)?.profile?.resume_step) || ((user as any)?.profile?.resume_completion ? 8 : 1)) - 1, 7)]}
+                                    </span>
+                                </p>
+                            </div>
+
+                            <div className="hidden md:flex w-10 h-10 rounded-full bg-purple-50 items-center justify-center group-hover:bg-[#5c52d2] group-hover:text-white transition-colors">
+                                <ChevronRight className="w-5 h-5 text-[#5c52d2] group-hover:text-white" />
+                            </div>
+                        </motion.div>
+
                         {/* Quick Actions */}
                         <div className="space-y-6">
                             <div className="flex items-center gap-3 mb-4 ml-1 text-white">
