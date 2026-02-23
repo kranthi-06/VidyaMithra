@@ -224,6 +224,29 @@ export default function Quiz() {
                 } catch (e) {
                     console.error("Failed to submit roadmap quiz:", e);
                 }
+            } else {
+                // ── Standalone quiz: submit to tracking system ──
+                try {
+                    const answers = Object.entries(selectedAnswers).map(([idx, selected]) => ({
+                        question_id: parseInt(idx),
+                        selected,
+                        correct: quizQuestions[parseInt(idx)].correct,
+                        question_text: quizQuestions[parseInt(idx)].question
+                    }));
+
+                    const result = await submitSkillQuiz(
+                        null,
+                        `standalone_${topic.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+                        topic,
+                        difficulty,
+                        answers
+                    );
+                    setQuizResult(result);
+
+                    try { await saveProgressSnapshot(0); } catch (_) { }
+                } catch (e) {
+                    console.error("Failed to submit standalone quiz:", e);
+                }
             }
         }
     };
@@ -290,25 +313,51 @@ export default function Quiz() {
                                 <Card className="p-10 border-none shadow-xl bg-white/90 backdrop-blur-sm rounded-[2.5rem] space-y-10 max-w-2xl mx-auto border border-white/20">
                                     {/* Topic selection: show only for standard quizzes */}
                                     {!isRoadmapQuiz && (
-                                        <div className="space-y-6">
-                                            <div className="flex items-center gap-3 text-slate-400 text-xs font-black uppercase tracking-widest">
-                                                <BookOpen className="w-4 h-4 text-blue-500" />
-                                                Select Technology
+                                        <div className="space-y-8">
+                                            {/* Smart Search Bar */}
+                                            <div className="space-y-4">
+                                                <div className="flex items-center gap-3 text-slate-400 text-xs font-black uppercase tracking-widest">
+                                                    <Target className="w-4 h-4 text-purple-500" />
+                                                    Any Topic, Skill, or subject
+                                                </div>
+                                                <div className="relative group">
+                                                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#5c52d2] transition-colors">
+                                                        <BrainCircuit className="w-5 h-5" />
+                                                    </div>
+                                                    <Input
+                                                        value={topic}
+                                                        onChange={(e) => setTopic(e.target.value)}
+                                                        placeholder="Type anything (e.g. 'React Hooks', 'Data Structures', 'AWS Basics')"
+                                                        className="pl-14 h-16 rounded-2xl border-2 border-slate-100 bg-white/50 backdrop-blur shadow-sm font-bold text-slate-900 focus-visible:ring-0 focus-visible:border-[#5c52d2] text-lg transition-all"
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && topic.trim()) {
+                                                                handleStartQuiz();
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                {languages.map((lang) => (
-                                                    <button
-                                                        key={lang.name}
-                                                        onClick={() => setTopic(lang.name)}
-                                                        className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition-all ${topic === lang.name
-                                                            ? `border-transparent shadow-xl ring-2 ring-slate-900 ${lang.bg} ${lang.color}`
-                                                            : 'border-slate-50 bg-slate-50/50 text-slate-400 hover:bg-white hover:border-slate-200'
-                                                            }`}
-                                                    >
-                                                        <BrainCircuit className="w-6 h-6" />
-                                                        <span className="text-xs font-black uppercase tracking-widest">{lang.name}</span>
-                                                    </button>
-                                                ))}
+
+                                            <div className="space-y-4">
+                                                <div className="flex items-center gap-3 text-slate-400 text-xs font-black uppercase tracking-widest pt-4 border-t border-slate-100">
+                                                    <BookOpen className="w-4 h-4 text-blue-500" />
+                                                    Or Select Popular Languages
+                                                </div>
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                    {languages.map((lang) => (
+                                                        <button
+                                                            key={lang.name}
+                                                            onClick={() => setTopic(lang.name)}
+                                                            className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition-all ${topic === lang.name
+                                                                ? `border-transparent shadow-xl ring-2 ring-slate-900 ${lang.bg} ${lang.color}`
+                                                                : 'border-slate-50 bg-slate-50/50 text-slate-400 hover:bg-white hover:border-slate-200'
+                                                                }`}
+                                                        >
+                                                            <BrainCircuit className="w-6 h-6" />
+                                                            <span className="text-[10px] font-black uppercase tracking-widest">{lang.name}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
