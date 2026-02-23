@@ -4,6 +4,7 @@ from app.api.endpoints import (
     # New advanced modules
     roadmap, quiz_gating, learning_content, interview_advanced,
     opportunities, progress,
+    saved_resumes,
     # Admin system
     admin
 )
@@ -27,6 +28,7 @@ api_router.include_router(learning_content.router, prefix="/learning-content", t
 api_router.include_router(interview_advanced.router, prefix="/interview-advanced", tags=["interview-advanced"])
 api_router.include_router(opportunities.router, prefix="/opportunities", tags=["opportunities"])
 api_router.include_router(progress.router, prefix="/progress", tags=["progress"])
+api_router.include_router(saved_resumes.router, prefix="/saved-resumes", tags=["saved-resumes"])
 
 # ── Admin system ─────────────────────────────────────────
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])

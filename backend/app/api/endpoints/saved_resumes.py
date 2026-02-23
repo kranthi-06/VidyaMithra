@@ -1,0 +1,126 @@
+from typing import Any, List, Optional
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field
+from typing import Dict, Any
+
+from app.api import deps
+from app.models.resume import SavedResume
+from app.models.user import Profile
+
+router = APIRouter()
+
+class ResumeSaveRequest(BaseModel):
+    resume_name: str = "Untitled Resume"
+    resume_data: Dict[str, Any]
+    template_id: str = "modern"
+    theme: str = "default"
+    target_role: Optional[str] = None
+    ats_score: Optional[float] = None
+    is_primary: bool = False
+
+def extract_skills_from_resume(resume_data: Dict[str, Any]) -> List[str]:
+    """Helper to extract skills efficiently from structured resume data."""
+    extracted = set()
+    
+    # Check top-level skills section
+    skills_section = resume_data.get("skills", {})
+    if isinstance(skills_section, dict):
+        if "categories" in skills_section:
+            for category in skills_section["categories"]:
+                for item in category.get("items", []):
+                    if isinstance(item, str):
+                        extracted.add(item.strip())
+                    elif isinstance(item, dict) and "name" in item:
+                        extracted.add(item["name"].strip())
+        elif "items" in skills_section:
+            for item in skills_section["items"]:
+                if isinstance(item, str):
+                    extracted.add(item.strip())
+                elif isinstance(item, dict) and "name" in item:
+                    extracted.add(item["name"].strip())
+                    
+    # Can also add logic here to extract keywords from summary, text, etc if needed
+
+    return [s for s in extracted if s]
+
+@router.post("/")
+async def save_resume(
+    request: ResumeSaveRequest,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user),
+) -> Any:
+    """Save a resume and intelligently sync skills."""
+    
+    # 1. Deal with is_primary
+    if request.is_primary:
+        db.query(SavedResume).filter(
+            SavedResume.user_id == current_user.id
+        ).update({"is_primary": False})
+        
+    # 2. Check if updating an existing resume by ID would make sense, but
+    # for simplicity we create a new one unless specified. In this simple version,
+    # we just create a new record:
+    new_resume = SavedResume(
+        user_id=current_user.id,
+        resume_name=request.resume_name,
+        resume_data=request.resume_data,
+        template_id=request.template_id,
+        theme=request.theme,
+        target_role=request.target_role,
+        ats_score=request.ats_score,
+        is_primary=request.is_primary
+    )
+    db.add(new_resume)
+    
+    # 3. Sync extracted skills to Profile
+    extracted_skills = extract_skills_from_resume(request.resume_data)
+    if extracted_skills:
+        profile = db.query(Profile).filter(Profile.id == current_user.id).first()
+        if not profile:
+            profile = Profile(id=current_user.id)
+            db.add(profile)
+            
+        current_skills = set(profile.skills or [])
+        new_skills = current_skills.union(set(extracted_skills))
+        
+        profile.skills = list(new_skills)
+        # SQLAlchemy JSON trick to force update
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(profile, "skills")
+        
+    db.commit()
+    db.refresh(new_resume)
+    
+    return {"message": "Resume saved successfully", "id": str(new_resume.id)}
+
+@router.get("/")
+async def get_saved_resumes(
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user),
+) -> Any:
+    """Get all saved resumes for the user."""
+    resumes = db.query(SavedResume).filter(
+        SavedResume.user_id == current_user.id
+    ).order_by(SavedResume.created_at.desc()).all()
+    
+    return {"resumes": resumes}
+
+@router.delete("/{resume_id}")
+async def delete_saved_resume(
+    resume_id: str,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(deps.get_current_active_user),
+) -> Any:
+    """Delete a saved resume."""
+    resume = db.query(SavedResume).filter(
+        SavedResume.id == resume_id,
+        SavedResume.user_id == current_user.id
+    ).first()
+    
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+        
+    db.delete(resume)
+    db.commit()
+    return {"message": "Resume deleted successfully"}

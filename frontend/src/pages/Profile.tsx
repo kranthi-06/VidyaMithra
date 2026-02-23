@@ -7,9 +7,42 @@ import { useAuth } from '../context/AuthContext';
 import {
     User, Mail, Phone, MapPin, Briefcase, Calendar,
     Linkedin, Github, Globe, FileText, Award, Star,
-    Edit2, Camera, Save, X, Plus
+    Edit2, Camera, Save, X, Plus, Trash2, Eye, Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getSavedResumes, deleteSavedResume } from '../services/resumeStorage';
+import {
+    ModernTemplate, ClassicTemplate, CreativeTemplate, DeveloperTemplate,
+    MinimalATSTemplate, AcademicTemplate, ExecutiveTemplate, TwoColumnTemplate,
+    PortfolioTemplate, CompactTemplate, TimelineTemplate, ElegantTemplate,
+    BoldHeaderTemplate, InfographicTemplate, CorporateTemplate, FreshTemplate
+} from './ResumeBuilder/templates';
+import { exportToPDF } from './ResumeBuilder/exportUtils';
+import type { BaseTemplate } from './ResumeBuilder/templates';
+import type { ResumeData } from './ResumeBuilder/types';
+
+function RenderTemplate({ base, data, color }: { base: BaseTemplate; data: ResumeData; color: string }) {
+    const p = { data, accentColor: color };
+    switch (base) {
+        case 'modern': return <ModernTemplate {...p} />;
+        case 'classic': return <ClassicTemplate {...p} />;
+        case 'creative': return <CreativeTemplate {...p} />;
+        case 'developer': return <DeveloperTemplate {...p} />;
+        case 'minimal-ats': return <MinimalATSTemplate {...p} />;
+        case 'academic': return <AcademicTemplate {...p} />;
+        case 'executive': return <ExecutiveTemplate {...p} />;
+        case 'two-column': return <TwoColumnTemplate {...p} />;
+        case 'portfolio': return <PortfolioTemplate {...p} />;
+        case 'compact': return <CompactTemplate {...p} />;
+        case 'timeline': return <TimelineTemplate {...p} />;
+        case 'elegant': return <ElegantTemplate {...p} />;
+        case 'bold-header': return <BoldHeaderTemplate {...p} />;
+        case 'infographic': return <InfographicTemplate {...p} />;
+        case 'corporate': return <CorporateTemplate {...p} />;
+        case 'fresh': return <FreshTemplate {...p} />;
+        default: return <ModernTemplate {...p} />;
+    }
+}
 
 export default function Profile() {
     const { user } = useAuth();
@@ -32,6 +65,9 @@ export default function Profile() {
         image: null as string | null
     });
 
+    const [savedResumes, setSavedResumes] = useState<any[]>([]);
+    const [loadingResumes, setLoadingResumes] = useState(false);
+
     // Load profile from localStorage on mount
     useEffect(() => {
         if (user?.email) {
@@ -45,6 +81,36 @@ export default function Profile() {
             }
         }
     }, [user?.email]);
+
+    useEffect(() => {
+        const fetchSavedResumes = async () => {
+            setLoadingResumes(true);
+            try {
+                const res = await getSavedResumes();
+                if (res?.resumes) {
+                    setSavedResumes(res.resumes);
+                }
+            } catch (err) {
+                console.error("Error fetching resumes:", err);
+            }
+            setLoadingResumes(false);
+        };
+        fetchSavedResumes();
+    }, []);
+
+    const handleDeleteResume = async (id: string) => {
+        try {
+            await deleteSavedResume(id);
+            setSavedResumes(prev => prev.filter(r => r.id !== id));
+        } catch (err) {
+            console.error("Error deleting resume:", err);
+        }
+    };
+
+    const handleDownloadPDF = async (resume: any) => {
+        const name = resume.resume_name.replace(/\s+/g, '_') || 'resume';
+        await exportToPDF(`resume-preview-${resume.id}`, `${name}.pdf`);
+    };
 
     const handleSave = () => {
         if (user?.email) {
@@ -367,6 +433,80 @@ export default function Profile() {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                {/* ── SAVED RESUMES SECTION ── */}
+                <div className="mt-8 mb-16">
+                    <h3 className="font-black text-slate-900 text-2xl mb-6 flex items-center gap-3">
+                        <FileText className="w-6 h-6 text-[#5c52d2]" /> Saved Resumes
+                    </h3>
+
+                    {loadingResumes ? (
+                        <div className="text-center text-slate-400 py-10">Loading your resumes...</div>
+                    ) : savedResumes.length === 0 ? (
+                        <div className="bg-white rounded-3xl p-10 text-center shadow-lg border border-slate-100">
+                            <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                            <h4 className="text-xl font-bold text-slate-700 mb-2">No Saved Resumes</h4>
+                            <p className="text-slate-500 max-w-sm mx-auto">Create and save your beautiful resumes from the builder to display them here.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {savedResumes.map((resume: any) => (
+                                <div key={resume.id} className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden group">
+                                    {/* Action Bar */}
+                                    <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 text-lg">{resume.resume_name}</h4>
+                                            <p className="text-xs font-semibold text-slate-400">Template: <span className="uppercase text-[#5c52d2]">{resume.template_id}</span> • {new Date(resume.created_at).toLocaleDateString()}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 shadow-sm text-slate-600 hover:text-[#5c52d2] hover:bg-purple-50"
+                                                onClick={() => handleDownloadPDF(resume)}
+                                            >
+                                                <Download className="w-4 h-4 mr-1.5" /> PDF
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-8 w-8 text-red-400 hover:text-red-500 hover:bg-red-50"
+                                                onClick={() => handleDeleteResume(resume.id)}
+                                                title="Delete Resume"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {/* Visual Render constraints */}
+                                    <div className="bg-gray-200 p-6 flex flex-col items-center justify-center relative overscroll-contain overflow-hidden" style={{ minHeight: '600px' }}>
+                                        {/* Scale trick to fit entire A4 template in the box without scroll */}
+                                        <div
+                                            className="bg-white shadow-2xl overflow-hidden pointer-events-none transform origin-top"
+                                            style={{ width: '794px', height: '1123px', transform: 'scale(0.5)', marginBottom: '-550px' }}
+                                        >
+                                            <div id={`resume-preview-${resume.id}`} className="w-full h-full">
+                                                <RenderTemplate
+                                                    base={resume.template_id as BaseTemplate}
+                                                    data={resume.resume_data}
+                                                    color={resume.theme || '#5c52d2'}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Hover Overlay */}
+                                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-4">
+                                            <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-50 font-bold px-8 shadow-xl" onClick={() => handleDownloadPDF(resume)}>
+                                                <Download className="w-5 h-5 mr-2" /> Download Document
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </main>
         </div>

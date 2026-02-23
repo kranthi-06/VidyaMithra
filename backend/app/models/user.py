@@ -24,6 +24,7 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     profile = relationship("Profile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    resumes = relationship("SavedResume", back_populates="user", cascade="all, delete-orphan")
 
 class Profile(Base):
     __tablename__ = "profiles"
@@ -32,6 +33,7 @@ class Profile(Base):
     phone_number = Column(String, nullable=True)
     bio = Column(Text, nullable=True)
     links = Column(JSONB, default={})
+    skills = Column(JSONB, default=[]) # Array of extracted/manual skills
     activity_log = Column(JSONB, default=[])
     
     # Mirror admin fields for easy profile queries

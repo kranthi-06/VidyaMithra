@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Palette, Download, FileText, FileType2, Eye, Sparkles,
     CheckCircle2, Loader2, Wand2, PanelRightOpen, PanelRightClose,
-    ChevronDown, ChevronRight, Search, Filter, GripVertical
+    ChevronDown, ChevronRight, Search, Filter, GripVertical, Save
 } from 'lucide-react';
 import { SectionCard } from './components';
 import {
@@ -17,6 +17,7 @@ import type { BaseTemplate, CatalogTemplate } from './templates';
 import type { ResumeData } from './types';
 import { exportToPDF, exportToDOCX } from './exportUtils';
 import { optimizeResumeContent } from '../../services/resumeBuilder';
+import { saveResumeToProfile } from '../../services/resumeStorage';
 import { SidePanelEditor } from './SidePanelEditor';
 
 interface StepVisualBuilderProps {
@@ -97,6 +98,8 @@ export function StepVisualBuilder({ data, onChange }: StepVisualBuilderProps) {
     const [showPanel, setShowPanel] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set(TEMPLATE_CATEGORIES));
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
     const previewRef = useRef<HTMLDivElement>(null);
 
     const selected = useMemo(() => TEMPLATE_CATALOG.find(t => t.template_id === selectedId) || TEMPLATE_CATALOG[0], [selectedId]);
@@ -163,6 +166,33 @@ export function StepVisualBuilder({ data, onChange }: StepVisualBuilderProps) {
             await exportToDOCX(data, `${name}_Resume.docx`);
         } catch (e) { console.error('DOCX export error:', e); }
         setExporting(null);
+    };
+
+    const handleSaveToProfile = async () => {
+        setSaving(true);
+        try {
+            const payload = {
+                resume_name: `${data.target_role || 'Untitled'} Resume`,
+                resume_data: {
+                    personal: data.personal,
+                    education: data.education,
+                    experience: data.experience,
+                    projects: data.projects,
+                    skills: data.skills
+                },
+                template_id: selectedId,
+                theme: accentColor || 'default',
+                target_role: data.target_role,
+                ats_score: data.ats?.score,
+                is_primary: true
+            };
+            await saveResumeToProfile(payload);
+            setSaved(true);
+            setTimeout(() => setSaved(false), 3000);
+        } catch (e) {
+            console.error('Error saving resume to profile:', e);
+        }
+        setSaving(false);
     };
 
     const handleDownloadJSON = () => {
@@ -373,6 +403,10 @@ export function StepVisualBuilder({ data, onChange }: StepVisualBuilderProps) {
                     <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleDownloadJSON}
                         className="px-8 py-3.5 bg-gray-900 text-white rounded-2xl font-bold text-sm shadow-lg hover:bg-gray-800 transition-all flex items-center gap-2.5">
                         <Download className="w-4 h-4" /> Download JSON
+                    </motion.button>
+                    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleSaveToProfile} disabled={saving}
+                        className="px-8 py-3.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-green-200 hover:shadow-xl transition-all disabled:opacity-60 flex items-center gap-2.5">
+                        {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : saved ? <><CheckCircle2 className="w-4 h-4" /> Saved to Profile</> : <><Save className="w-4 h-4" /> Save to Profile</>}
                     </motion.button>
                 </div>
 
