@@ -9,6 +9,10 @@ export interface AdminUser {
     last_active_at: string | null;
     created_at: string | null;
     full_name: string;
+    progress_status?: string;
+    career_score?: number;
+    quizzes_passed?: number;
+    interviews_done?: number;
 }
 
 // ── REQUIRE_ADMIN ROUTES ──────────────────────────────────

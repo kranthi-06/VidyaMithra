@@ -59,8 +59,30 @@ def list_all_users(
     total = query.count()
     users = query.order_by(User.created_at.desc()).offset(skip).limit(limit).all()
     
+    from app.models.career import Roadmap, ProgressSnapshot
+    
     result = []
     for u in users:
+        # Get active roadmap status
+        roadmap = db.query(Roadmap).filter(Roadmap.user_id == u.id, Roadmap.is_active == True).first()
+        progress_status = "No Roadmap"
+        if roadmap and roadmap.roadmap_data and "levels" in roadmap.roadmap_data:
+            # Figure out current stage (Stage 1, Stage 2, etc.) based on completion
+            # Simple heuristic: find the lowest locked/unlocked level
+            levels = roadmap.roadmap_data["levels"]
+            current_stage = 1
+            for idx, lvl in enumerate(levels):
+                is_completed = all(s.get("status") == "completed" for s in lvl.get("skills", []))
+                if not is_completed:
+                    current_stage = idx + 1
+                    break
+            else:
+                current_stage = len(levels) # All completed
+            progress_status = f"Stage {current_stage}: {roadmap.target_role}"
+
+        # Get latest progress snapshot
+        snap = db.query(ProgressSnapshot).filter(ProgressSnapshot.user_id == u.id).order_by(ProgressSnapshot.snapshot_date.desc()).first()
+
         result.append({
             "id": str(u.id),
             "email": u.email,
@@ -70,6 +92,10 @@ def list_all_users(
             "last_active_at": u.last_active_at.isoformat() if u.last_active_at else None,
             "created_at": u.created_at.isoformat() if u.created_at else None,
             "full_name": u.profile.full_name if u.profile else u.email.split("@")[0],
+            "progress_status": progress_status,
+            "career_score": snap.career_readiness_score if snap else 0.0,
+            "quizzes_passed": snap.total_quizzes_passed if snap else 0,
+            "interviews_done": snap.total_interviews_done if snap else 0,
         })
     
     return {"users": result, "total": total}
